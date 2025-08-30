@@ -15,7 +15,7 @@ services:
 
   php-fpm:
     build: sourcefiles/php-fpm
-    container_name: ${PROJECT_NAME}-app
+    container_name: ${PROJECT_NAME}-php-fpm
 
     working_dir: /application
     environment:
