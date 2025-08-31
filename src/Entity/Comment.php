@@ -10,6 +10,8 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: CommentRepository::class)]
 #[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'comment')]
+#[ORM\Index(name: 'comment_created_at_index', columns: ['created_at'])]
 class Comment
 {
     #[ORM\Id]

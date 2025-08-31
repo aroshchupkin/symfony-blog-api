@@ -14,15 +14,16 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/posts')]
 final class PostController extends AbstractController
 {
     public function __construct(
-        private readonly PostRepository      $postRepository,
-        private readonly SerializerInterface $serializer,
-        private readonly ValidatorInterface  $validator,
-        private readonly CacheInterface      $cache
+        private readonly PostRepository         $postRepository,
+        private readonly SerializerInterface    $serializer,
+        private readonly ValidatorInterface     $validator,
+        private readonly TagAwareCacheInterface $cache
     )
     {
     }
@@ -33,17 +34,18 @@ final class PostController extends AbstractController
     #[Route('', name: 'posts_index', methods: ['GET'])]
     public function index(Request $request): JsonResponse
     {
-        $page = max(1, (int) $request->query->get('page', 1));
-        $limit = min(100, max(1, (int) $request->query->get('limit', 10)));
+        $page = max(1, (int)$request->query->get('page', 1));
+        $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
 
-        $cacheKey = "posts:page:{$page}:limit:{$limit}";
+        $cacheKey = "posts_list_page_{$page}_limit_{$limit}";
 
         $result = $this->cache->get($cacheKey, function (ItemInterface $item) use ($page, $limit) {
             $item->expiresAfter(300);
+            $item->tag(['posts_list']);
 
             $posts = $this->postRepository->findAllWithPagination($page, $limit);
             $total = $this->postRepository->countAll();
-            $totalPages = (int) ceil($total / $limit);
+            $totalPages = (int)ceil($total / $limit);
 
             return [
                 'posts' => $posts,
@@ -57,22 +59,20 @@ final class PostController extends AbstractController
         });
 
         $data = $this->serializer->serialize($result, 'json', ['groups' => ['post:list']]);
-//        $normalizer = $this->serializer->normalize($result, null, ['groups' => ['post:list']]);
-
         return new JsonResponse($data, Response::HTTP_OK, [], true);
-//        return $this->json($normalizer, Response::HTTP_OK);
     }
 
     /**
      * @throws InvalidArgumentException
      */
-    #[Route('/{id}', name: 'posts_show', requirements: ['id'=>'\d+'], methods: ['GET'])]
+    #[Route('/{id}', name: 'posts_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
-        $cacheKey = "post_{$id}";
+        $cacheKey = "post_detail_{$id}";
 
         $post = $this->cache->get($cacheKey, function (ItemInterface $item) use ($id) {
             $item->expiresAfter(300);
+            $item->tag(['post_detail', "post_{$id}"]);
 
             return $this->postRepository->find($id);
         });
@@ -85,10 +85,7 @@ final class PostController extends AbstractController
         }
 
         $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
-//        $normalizer = $this->serializer->normalize($post, null, ['groups' => ['post:read']]);
-
         return new JsonResponse($data, Response::HTTP_OK, [], true);
-//        return $this->json($normalizer, Response::HTTP_OK);
     }
 
     /**
@@ -126,26 +123,23 @@ final class PostController extends AbstractController
 
             return new JsonResponse([
                 'error' => 'Validation failed',
-                'code' =>'VALIDATION_ERROR',
+                'code' => 'VALIDATION_ERROR',
                 'details' => $errorMessages
             ], Response::HTTP_BAD_REQUEST);
         }
 
         $this->postRepository->save($post, true);
 
-        $this->cache->delete('posts:page:1:limit:10');
+        $this->cache->invalidateTags(['posts_list']);
 
         $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
-//        $normalizer = $this->serializer->normalize($post, null, ['groups' => ['post:read']]);
-
         return new JsonResponse($data, Response::HTTP_CREATED, [], true);
-//        return $this->json($normalizer, Response::HTTP_CREATED);
     }
 
     /**
      * @throws InvalidArgumentException
      */
-    #[Route('/{id}', name: 'posts_update', requirements: ['id'=>'\d+'], methods: ['PUT'])]
+    #[Route('/{id}', name: 'posts_update', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
         $post = $this->postRepository->find($id);
@@ -184,27 +178,23 @@ final class PostController extends AbstractController
 
             return new JsonResponse([
                 'error' => 'Validation failed',
-                'code' =>'VALIDATION_ERROR',
+                'code' => 'VALIDATION_ERROR',
                 'details' => $errorMessages
             ], Response::HTTP_BAD_REQUEST);
         }
 
         $this->postRepository->save($post, true);
 
-        $this->cache->delete("post_{$id}");
-        $this->cache->delete('posts:page:1:limit:10');
+        $this->cache->invalidateTags(["post_{$id}", 'posts_list']);
 
         $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
-//        $normalizer = $this->serializer->normalize($post, null, ['groups' => ['post:read']]);
-
         return new JsonResponse($data, Response::HTTP_OK, [], true);
-//        return $this->json($normalizer, Response::HTTP_OK);
     }
 
     /**
      * @throws InvalidArgumentException
      */
-    #[Route('/{id}', name: 'posts_delete', requirements: ['id'=>'\d+'], methods: ['DELETE'])]
+    #[Route('/{id}', name: 'posts_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
         $post = $this->postRepository->find($id);
@@ -218,8 +208,7 @@ final class PostController extends AbstractController
 
         $this->postRepository->remove($post, true);
 
-        $this->cache->delete("post_{$id}");
-        $this->cache->delete('posts:page:1:limit:10');
+        $this->cache->invalidateTags(["post_{$id}", 'posts_list']);
 
         return new JsonResponse([
             'message' => 'Post deleted successfully',

@@ -12,6 +12,8 @@ use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity(repositoryClass: PostRepository::class)]
 #[ORM\HasLifecycleCallbacks]
+#[ORM\Table(name: 'posts')]
+#[ORM\Index(name: 'posts_created_at_index', columns: ['created_at'])]
 class Post
 {
     #[ORM\Id]
@@ -36,11 +38,11 @@ class Post
     #[Groups(['post:read', 'post:write'])]
     private ?string $content = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     #[Groups(['post:read', 'post:list'])]
     private ?\DateTimeInterface  $createdAt = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE, nullable: true)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     #[Groups(['post:read', 'post:list'])]
     private ?\DateTimeInterface  $updatedAt = null;
 
@@ -68,7 +70,7 @@ class Post
 
     public function setTitle(string $title): static
     {
-        $this->title = $title;
+        $this->title = trim($title);
 
         return $this;
     }
@@ -80,7 +82,7 @@ class Post
 
     public function setContent(string $content): static
     {
-        $this->content = $content;
+        $this->content = trim($content);
 
         return $this;
     }
@@ -149,5 +151,15 @@ class Post
         }
 
         return $this;
+    }
+
+    public function getCommentsCount(): int
+    {
+        return $this->comments->count();
+    }
+
+    public function _toString(): string
+    {
+        return $this->title ?? 'New Post';
     }
 }
