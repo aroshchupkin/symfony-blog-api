@@ -32,6 +32,7 @@ services:
     env_file:
       - .env
     environment:
+      PGPASSWORD: '${DB_PASSWORD}'
       POSTGRES_DB: '${DB_DATABASE}'
       POSTGRES_USER: '${DB_USERNAME}'
       POSTGRES_PASSWORD: '${DB_PASSWORD}'
