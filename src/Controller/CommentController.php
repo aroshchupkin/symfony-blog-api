@@ -5,26 +5,26 @@ namespace App\Controller;
 use App\Entity\Comment;
 use App\Repository\CommentRepository;
 use App\Repository\PostRepository;
+use App\Service\CacheService;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/posts/{postId}/comments')]
 final class CommentController extends AbstractController
 {
     public function __construct(
-        private readonly CommentRepository      $commentRepository,
-        private readonly PostRepository         $postRepository,
-        private readonly SerializerInterface    $serializer,
-        private readonly ValidatorInterface     $validator,
-        private readonly TagAwareCacheInterface $cache
+        private readonly CommentRepository   $commentRepository,
+        private readonly PostRepository      $postRepository,
+        private readonly SerializerInterface $serializer,
+        private readonly ValidatorInterface  $validator,
+        private readonly CacheService        $cacheService
     )
     {
     }
@@ -47,11 +47,10 @@ final class CommentController extends AbstractController
         $page = max(1, (int)$request->query->get('page', 1));
         $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
 
-        $cacheKey = "comments_post_{$postId}_page_{$page}_limit_{$limit}";
+        $cacheKey = $this->cacheService->getCommentsListCacheKey($postId, $page, $limit);
 
-        $result = $this->cache->get($cacheKey, function (ItemInterface $item) use ($post, $page, $limit, $postId) {
-            $item->expiresAfter(3600);
-            $item->tag(['comments_list', "comments_post_{$postId}"]);
+        $result = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($post, $page, $limit) {
+            $item->expiresAfter($this->cacheService->getListCacheTime());
 
             $comments = $this->commentRepository->findByPostWithPagination($post, $page, $limit);
             $total = $this->commentRepository->countByPost($post);
@@ -63,12 +62,50 @@ final class CommentController extends AbstractController
                     'current_page' => $page,
                     'total_pages' => $totalPages,
                     'total_items' => $total,
-                    'items_per_page' => $limit
+                    'items_per_page' => $limit,
+                    'has_next_page' => $page < $totalPages,
+                    'has_prev_page' => $page > 1
                 ]
             ];
         });
 
         $data = $this->serializer->serialize($result, 'json', ['groups' => ['comment:list']]);
+
+        return new JsonResponse($data, Response::HTTP_OK, [], true);
+    }
+
+    /**
+     * @throws InvalidArgumentException
+     */
+    #[Route('/{id}', name: 'comments_show', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['GET'])]
+    public function show(int $postId, int $id): JsonResponse
+    {
+        $post = $this->postRepository->find($postId);
+
+        if (!$post) {
+            return new JsonResponse([
+                'error' => 'Post not found',
+                'code' => 'POST_NOT_FOUND',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $cacheKey = $this->cacheService->getCommentDetailCacheKey($id);
+
+        $comment = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($id) {
+            $item->expiresAfter($this->cacheService->getListCacheTime());
+
+            return $this->commentRepository->find($id);
+        });
+
+        if (!$comment || $comment->getPost()->getId() !== $post->getId()) {
+            return new JsonResponse([
+                'error' => 'Comment not found',
+                'code' => 'COMMENT_NOT_FOUND',
+            ], Response::HTTP_NOT_FOUND);
+        }
+
+        $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:list']]);
+
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
@@ -128,12 +165,16 @@ final class CommentController extends AbstractController
 
         $this->commentRepository->save($comment, true);
 
-        $this->cache->invalidateTags(["comments_post_{$postId}"]);
+        $this->cacheService->clearCommentsListCache($postId);
 
         $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:read']]);
+
         return new JsonResponse($data, Response::HTTP_CREATED, [], true);
     }
 
+    /**
+     * @throws InvalidArgumentException
+     */
     #[Route('/{id}', name: 'comments_update', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['PATCH'])]
     public function update(int $postId, int $id, Request $request): JsonResponse
     {
@@ -193,9 +234,10 @@ final class CommentController extends AbstractController
 
         $this->commentRepository->save($comment, true);
 
-        $this->cache->invalidateTags(["comments_post_{$postId}"]);
+        $this->cacheService->clearCommentRelatedCache($id, $postId);
 
         $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:read']]);
+
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
@@ -225,7 +267,7 @@ final class CommentController extends AbstractController
 
         $this->commentRepository->remove($comment, true);
 
-        $this->cache->invalidateTags(["comments_post_{$postId}"]);
+        $this->cacheService->clearCommentRelatedCache($id, $postId);
 
         return new JsonResponse([
             'message' => 'Comment deleted successfully',

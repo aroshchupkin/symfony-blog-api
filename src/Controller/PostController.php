@@ -4,26 +4,25 @@ namespace App\Controller;
 
 use App\Entity\Post;
 use App\Repository\PostRepository;
+use App\Service\CacheService;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
-use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 #[Route('/api/posts')]
 final class PostController extends AbstractController
 {
     public function __construct(
-        private readonly PostRepository         $postRepository,
-        private readonly SerializerInterface    $serializer,
-        private readonly ValidatorInterface     $validator,
-        private readonly TagAwareCacheInterface $cache
+        private readonly PostRepository      $postRepository,
+        private readonly SerializerInterface $serializer,
+        private readonly ValidatorInterface  $validator,
+        private readonly CacheService        $cacheService
     )
     {
     }
@@ -37,11 +36,10 @@ final class PostController extends AbstractController
         $page = max(1, (int)$request->query->get('page', 1));
         $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
 
-        $cacheKey = "posts_list_page_{$page}_limit_{$limit}";
+        $cacheKey = $this->cacheService->getPostsListCacheKey($page, $limit);
 
-        $result = $this->cache->get($cacheKey, function (ItemInterface $item) use ($page, $limit) {
-            $item->expiresAfter(300);
-            $item->tag(['posts_list']);
+        $result = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($page, $limit) {
+            $item->expiresAfter($this->cacheService->getListCacheTime());
 
             $posts = $this->postRepository->findAllWithPagination($page, $limit);
             $total = $this->postRepository->countAll();
@@ -53,12 +51,15 @@ final class PostController extends AbstractController
                     'current_page' => $page,
                     'total_pages' => $totalPages,
                     'total_items' => $total,
-                    'items_per_page' => $limit
+                    'items_per_page' => $limit,
+                    'has_next_page' => $page < $totalPages,
+                    'has_previous_page' => $page > 1,
                 ]
             ];
         });
 
         $data = $this->serializer->serialize($result, 'json', ['groups' => ['post:list']]);
+
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
@@ -68,11 +69,10 @@ final class PostController extends AbstractController
     #[Route('/{id}', name: 'posts_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function show(int $id): JsonResponse
     {
-        $cacheKey = "post_detail_{$id}";
+        $cacheKey = $this->cacheService->getPostDetailCacheKey($id);
 
-        $post = $this->cache->get($cacheKey, function (ItemInterface $item) use ($id) {
-            $item->expiresAfter(300);
-            $item->tag(['post_detail', "post_{$id}"]);
+        $post = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($id) {
+            $item->expiresAfter($this->cacheService->getListCacheTime());
 
             return $this->postRepository->find($id);
         });
@@ -85,6 +85,7 @@ final class PostController extends AbstractController
         }
 
         $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
+
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
@@ -130,9 +131,10 @@ final class PostController extends AbstractController
 
         $this->postRepository->save($post, true);
 
-        $this->cache->invalidateTags(['posts_list']);
+        $this->cacheService->clearPostsListCache();
 
         $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
+
         return new JsonResponse($data, Response::HTTP_CREATED, [], true);
     }
 
@@ -185,9 +187,11 @@ final class PostController extends AbstractController
 
         $this->postRepository->save($post, true);
 
-        $this->cache->invalidateTags(["post_{$id}", 'posts_list']);
+        $this->cacheService->clearPostDetailCache($id);
+        $this->cacheService->clearPostsListCache();
 
         $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
+
         return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
@@ -208,7 +212,7 @@ final class PostController extends AbstractController
 
         $this->postRepository->remove($post, true);
 
-        $this->cache->invalidateTags(["post_{$id}", 'posts_list']);
+        $this->cacheService->clearPostRelatedCache($id);
 
         return new JsonResponse([
             'message' => 'Post deleted successfully',
