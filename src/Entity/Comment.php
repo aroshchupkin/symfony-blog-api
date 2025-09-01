@@ -45,7 +45,7 @@ class Comment
     #[Groups(['comment:read', 'comment:list', 'comment:write'])]
     private ?string $authorEmail = null;
 
-    #[ORM\Column(type: Types::DATETIME_MUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     #[Groups(['comment:read', 'comment:list'])]
     private ?\DateTimeInterface  $createdAt = null;
 
@@ -66,7 +66,7 @@ class Comment
 
     public function setContent(string $content): static
     {
-        $this->content = $content;
+        $this->content = trim($content);
 
         return $this;
     }

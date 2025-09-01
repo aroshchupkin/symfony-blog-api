@@ -64,7 +64,7 @@ final class CommentController extends AbstractController
                     'total_items' => $total,
                     'items_per_page' => $limit,
                     'has_next_page' => $page < $totalPages,
-                    'has_prev_page' => $page > 1
+                    'has_previous_page' => $page > 1
                 ]
             ];
         });

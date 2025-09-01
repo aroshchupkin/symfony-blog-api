@@ -114,13 +114,13 @@ class Post
     #[ORM\PrePersist]
     public function setCreatedAtValue(): void
     {
-        $this->createdAt = new \DateTime(); // DateTimeImmutable
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     #[ORM\PreUpdate]
     public function setUpdatedAtValue(): void
     {
-        $this->updatedAt = new \DateTime();
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     /**
@@ -158,7 +158,7 @@ class Post
         return $this->comments->count();
     }
 
-    public function _toString(): string
+    public function __toString(): string
     {
         return $this->title ?? 'New Post';
     }

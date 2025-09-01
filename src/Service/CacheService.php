@@ -18,7 +18,7 @@ class CacheService
     private const LIMIT_STEP = 10;
     private const MAX_LIMIT = 100;
 
-    private function __construct(private readonly CacheInterface $cache)
+    public function __construct(private readonly CacheInterface $cache)
     {
     }
 
