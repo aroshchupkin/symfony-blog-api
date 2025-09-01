@@ -92,7 +92,7 @@
               }
             ],
             "body": {
-              "mode": "Accept",
+              "mode": "raw",
               "raw": "{\n \"title\": \"Updated Blog Post Title\",\n \"content\": \"Updated content for My First Blog.\"\n}"
             },
             "url": {

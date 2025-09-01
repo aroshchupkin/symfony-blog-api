@@ -78,7 +78,7 @@ class Comment
 
     public function setAuthorName(string $authorName): static
     {
-        $this->authorName = $authorName;
+        $this->authorName = trim($authorName);
 
         return $this;
     }
@@ -90,7 +90,7 @@ class Comment
 
     public function setAuthorEmail(string $authorEmail): static
     {
-        $this->authorEmail = $authorEmail;
+        $this->authorEmail = trim($authorEmail);
 
         return $this;
     }
@@ -110,7 +110,7 @@ class Comment
     #[ORM\PrePersist]
     public function setCreatedAtValue(): void
     {
-        $this->createdAt = new \DateTime();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getPost(): ?Post
