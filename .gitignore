@@ -1,6 +1,7 @@
 
 ###> symfony/framework-bundle ###
-/.env.local
+#/.env
+#/.env.local
 /.env.local.php
 /.env.*.local
 /config/secrets/prod/prod.decrypt.private.php
@@ -10,7 +11,7 @@
 ###< symfony/framework-bundle ###
 
 # Docker
-/.docker/
+#/.docker/
 
 # IDE
 /.idea/
