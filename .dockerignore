@@ -1,7 +1,7 @@
 .git
 .gitignore
 README.md
-docker/sourcefiles/php-fpm/Dockerfile
+docker/php-fpm/Dockerfile
 docker/docker-compose.yml
 .docker
 .env.local

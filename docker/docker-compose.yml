@@ -9,12 +9,12 @@ services:
       - internal
     volumes:
       - ./../:/application
-      - ./sourcefiles/nginx:/etc/nginx/conf.d
+      - ./nginx:/etc/nginx/conf.d
     ports:
       - "${NGINX_PORT}:80"
 
   php-fpm:
-    build: sourcefiles/php-fpm
+    build: php-fpm
     container_name: ${PROJECT_NAME}-php-fpm
 
     working_dir: /application
@@ -22,7 +22,7 @@ services:
       - PHP_WORKER_INSTALL_BCMATH=true
     volumes:
       - ./../:/application
-      - ./sourcefiles/php-fpm/php-ini-overrides.ini:/usr/local/etc/php/conf.d/99-overrides.ini
+      - ./php-fpm/php-ini-overrides.ini:/usr/local/etc/php/conf.d/99-overrides.ini
     networks:
       - internal
 
@@ -37,7 +37,7 @@ services:
       POSTGRES_USER: '${DB_USERNAME}'
       POSTGRES_PASSWORD: '${DB_PASSWORD}'
     volumes:
-      - ./sourcefiles/postgres:/tmp
+      - ./postgres:/tmp
       - 'pg-data:/var/lib/postgresql/data'
     ports:
       - '${DB_PORT}:5432'
