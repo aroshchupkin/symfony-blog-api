@@ -25,3 +25,15 @@ services:
     App\Service\CacheService:
       arguments:
         $cache: '@cache.app'
+
+    app.normalizer.object_normalizer:
+      class: Symfony\Component\Serializer\Normalizer\ObjectNormalizer
+      tags: ['serializer.normalizer']
+      arguments:
+        $defaultContext:
+          circular_reference_handler: '@App\Serializer\CircularReferenceHandler'
+#          ignored_attributes: ['createdAt', 'updatedAt']
+          callbacks: {
+            'createdAt': '@App\Serializer\CreatedAtCallback',
+            'updatedAt': '@App\Serializer\UpdatedAtCallback'
+          }
