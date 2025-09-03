@@ -8,6 +8,7 @@ use DateTimeInterface;
 
 class CreatedAtCallback
 {
+//    public function __invoke(null|string|DateTimeInterface $innerObject): DateTimeInterface|string|null
     public function __invoke(null|string|DateTimeInterface $innerObject): DateTimeInterface|string|null
     {
         if ($innerObject === null) {
@@ -15,9 +16,11 @@ class CreatedAtCallback
         }
 
         if ($innerObject instanceof DateTimeInterface) {
-            return $innerObject;
+//            return $innerObject;
+            return $innerObject->format('c');
         }
 
-        return $innerObject->format('Y-m-d H:i:s');
+//        return $innerObject->format('Y-m-d H:i:s');
+        return $innerObject;
     }
 }
