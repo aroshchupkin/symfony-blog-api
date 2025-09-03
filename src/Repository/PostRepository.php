@@ -24,6 +24,8 @@ class PostRepository extends ServiceEntityRepository
     public function findAllWithPagination(int $page = 1, int $limit = 10): array
     {
         $query = $this->createQueryBuilder('post')
+            ->leftJoin('post.comments', 'comments')
+            ->addSelect('comments')
             ->orderBy('post.createdAt', 'DESC')
             ->setFirstResult(($page - 1) * $limit)
             ->setMaxResults($limit);

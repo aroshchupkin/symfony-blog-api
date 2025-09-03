@@ -156,6 +156,7 @@ class Post
         return $this;
     }
 
+    #[Groups(['post:list'])]
     public function getCommentsCount(): int
     {
         return $this->comments->count();
