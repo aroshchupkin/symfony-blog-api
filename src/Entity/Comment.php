@@ -6,7 +6,8 @@ use App\Repository\CommentRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
-use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Attribute\Groups;
+use Symfony\Component\Serializer\Attribute\Ignore;
 
 #[ORM\Entity(repositoryClass: CommentRepository::class)]
 #[ORM\HasLifecycleCallbacks]
@@ -17,13 +18,13 @@ class Comment
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['comment:read', 'comment:list'])]
+    #[Groups(['comment:read', 'comment:list', 'post:read'])]
     private ?int $id = null;
 
     #[ORM\Column(type: Types::TEXT)]
     #[Assert\NotBlank(message: 'Content cannot be blank')]
     #[Assert\Length(min: 5, minMessage: 'Content must be at least 5 characters')]
-    #[Groups(['comment:read', 'comment:list', 'comment:write'])]
+    #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
     private ?string $content = null;
 
     #[ORM\Column(length: 100)]
@@ -33,7 +34,7 @@ class Comment
         max: 100,
         minMessage: 'Author name must be at least 2 characters',
         maxMessage: 'Author name cannot be longer than 100 characters')]
-    #[Groups(['comment:read', 'comment:list', 'comment:write'])]
+    #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
     private ?string $authorName = null;
 
     #[ORM\Column(length: 100)]
@@ -42,12 +43,16 @@ class Comment
     #[Assert\Length(
         max: 100,
         maxMessage: 'Email cannot be longer than 100 characters')]
-    #[Groups(['comment:read', 'comment:list', 'comment:write'])]
+    #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
     private ?string $authorEmail = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    #[Groups(['comment:read', 'comment:list'])]
+    #[Groups(['comment:read', 'comment:list', 'post:read'])]
     private ?\DateTimeInterface  $createdAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    private ?\DateTimeInterface  $updatedAt = null;
 
     #[ORM\ManyToOne(inversedBy: 'comments')]
     #[ORM\JoinColumn(nullable: false)]
@@ -107,10 +112,27 @@ class Comment
         return $this;
     }
 
+    public function getUpdatedAt(): ?\DateTimeInterface
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(\DateTimeInterface $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
+    }
+
     #[ORM\PrePersist]
     public function setCreatedAtValue(): void
     {
         $this->createdAt = new \DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function setUpdatedAtValue(): void
+    {
+        $this->updatedAt = new \DateTimeImmutable();
     }
 
     public function getPost(): ?Post
