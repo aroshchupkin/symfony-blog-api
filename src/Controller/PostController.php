@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Post;
+use App\Entity\User;
 use App\Repository\PostRepository;
 use App\Service\CacheService;
 use Psr\Cache\InvalidArgumentException;
@@ -104,7 +105,16 @@ final class PostController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse([
+                'error' => 'User not authenticated',
+                'code' => 'USER_NOT_AUTHENTICATED'
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
         $post = new Post();
+        $post->setAuthor($user);
 
         if (isset($data['title'])) {
             $post->setTitle($data['title']);
@@ -144,6 +154,14 @@ final class PostController extends AbstractController
     #[Route('/{id}', name: 'posts_update', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     public function update(int $id, Request $request): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse([
+                'error' => 'User not authenticated',
+                'code' => 'USER_NOT_AUTHENTICATED'
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
         $post = $this->postRepository->find($id);
 
         if (!$post) {
@@ -151,6 +169,13 @@ final class PostController extends AbstractController
                 'error' => 'Post not found',
                 'code' => 'POST_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($post->getAuthor() !== $user) {
+            return new JsonResponse([
+                'error' => 'Access denied. You can only update your own posts',
+                'code' => 'ACCESS_DENIED'
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $data = json_decode($request->getContent(), true);
@@ -201,6 +226,14 @@ final class PostController extends AbstractController
     #[Route('/{id}', name: 'posts_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
     public function delete(int $id): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse([
+                'error' => 'User not authenticated',
+                'code' => 'USER_NOT_AUTHENTICATED'
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
         $post = $this->postRepository->find($id);
 
         if (!$post) {
@@ -208,6 +241,13 @@ final class PostController extends AbstractController
                 'error' => 'Post not found',
                 'code' => 'POST_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($post->getAuthor() !== $user) {
+            return new JsonResponse([
+                'error' => 'Access denied. You can only delete your own posts',
+                'code' => 'ACCESS_DENIED'
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $this->postRepository->remove($post, true);
