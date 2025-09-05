@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\Comment;
+use App\Entity\User;
 use App\Repository\CommentRepository;
 use App\Repository\PostRepository;
 use App\Service\CacheService;
@@ -133,8 +134,17 @@ final class CommentController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse([
+                'error' => 'User not authenticated',
+                'code' => 'USER_NOT_AUTHENTICATED'
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
         $comment = new Comment();
         $comment->setPost($post);
+        $comment->setAuthor($user);
 
         if (isset($data['content'])) {
             $comment->setContent($data['content']);
@@ -142,10 +152,14 @@ final class CommentController extends AbstractController
 
         if (isset($data['authorName'])) {
             $comment->setAuthorName($data['authorName']);
+        } else {
+            $comment->setAuthorName($user->getUsername());
         }
 
         if (isset($data['authorEmail'])) {
             $comment->setAuthorEmail($data['authorEmail']);
+        } else {
+            $comment->setAuthorEmail($user->getEmail());
         }
 
         $errors = $this->validator->validate($comment);
@@ -178,6 +192,14 @@ final class CommentController extends AbstractController
     #[Route('/{id}', name: 'comments_update', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['PATCH'])]
     public function update(int $postId, int $id, Request $request): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse([
+                'error' => 'User not authenticated',
+                'code' => 'USER_NOT_AUTHENTICATED'
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
         $post = $this->postRepository->find($postId);
 
         if (!$post) {
@@ -194,6 +216,13 @@ final class CommentController extends AbstractController
                 'error' => 'Comment not found',
                 'code' => 'COMMENT_NOT_FOUND',
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($comment->getAuthor() !== $user) {
+            return new JsonResponse([
+                'error' => 'Access denied. You can only update your own posts',
+                'code' => 'ACCESS_DENIED'
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $data = json_decode($request->getContent(), true);
@@ -247,6 +276,14 @@ final class CommentController extends AbstractController
     #[Route('/{id}', name: 'comments_delete', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['DELETE'])]
     public function delete(int $postId, int $id): JsonResponse
     {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return new JsonResponse([
+                'error' => 'User not authenticated',
+                'code' => 'USER_NOT_AUTHENTICATED'
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
         $post = $this->postRepository->find($postId);
 
         if (!$post) {
@@ -263,6 +300,13 @@ final class CommentController extends AbstractController
                 'error' => 'Comment not found',
                 'code' => 'COMMENT_NOT_FOUND',
             ], Response::HTTP_NOT_FOUND);
+        }
+
+        if ($comment->getAuthor() !== $user) {
+            return new JsonResponse([
+                'error' => 'Access denied. You can only delete your own posts',
+                'code' => 'ACCESS_DENIED'
+            ], Response::HTTP_FORBIDDEN);
         }
 
         $this->commentRepository->remove($comment, true);
