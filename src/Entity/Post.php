@@ -12,7 +12,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: PostRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ORM\Table(name: 'post')]
+#[ORM\Table(name: 'posts')]
 #[ORM\Index(name: 'post_created_at_index', columns: ['created_at'])]
 class Post
 {
@@ -48,7 +48,6 @@ class Post
 
     #[ORM\ManyToOne(inversedBy: 'posts')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['post:read', 'post:list'])]
     private ?User $author = null;
 
     /**
@@ -166,6 +165,12 @@ class Post
     public function getAuthor(): ?User
     {
         return $this->author;
+    }
+
+    #[Groups(['post:read', 'post:list'])]
+    public function getAuthorUsername(): ?string
+    {
+        return $this->author?->getUsername();
     }
 
     public function setAuthor(?User $author): static

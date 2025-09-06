@@ -120,6 +120,40 @@
 			"response": []
 		},
 		{
+			"name": "Get User Auth Profile",
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{jwt_token}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{baseURL}}/api/profile",
+					"host": [
+						"{{baseURL}}"
+					],
+					"path": [
+						"api",
+						"profile"
+					]
+				}
+			},
+			"response": []
+		},
+		{
 			"name": "Get All Posts With Auth Token",
 			"request": {
 				"auth": {
@@ -555,7 +589,7 @@
 	"variable": [
 		{
 			"key": "baseURL",
-			"value": "http://localhost:8000"
+			"value": ""
 		},
 		{
 			"key": "jwt_token",

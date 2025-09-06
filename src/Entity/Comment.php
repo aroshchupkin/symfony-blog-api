@@ -10,7 +10,7 @@ use Symfony\Component\Serializer\Attribute\Groups;
 
 #[ORM\Entity(repositoryClass: CommentRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ORM\Table(name: 'comment')]
+#[ORM\Table(name: 'comments')]
 #[ORM\Index(name: 'comment_created_at_index', columns: ['created_at'])]
 class Comment
 {
@@ -25,25 +25,6 @@ class Comment
     #[Assert\Length(min: 5, minMessage: 'Content must be at least 5 characters')]
     #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
     private ?string $content = null;
-
-    #[ORM\Column(length: 100)]
-    #[Assert\NotBlank(message: 'Author name cannot be blank')]
-    #[Assert\Length(
-        min: 2,
-        max: 100,
-        minMessage: 'Author name must be at least 2 characters',
-        maxMessage: 'Author name cannot be longer than 100 characters')]
-    #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
-    private ?string $authorName = null;
-
-    #[ORM\Column(length: 100)]
-    #[Assert\NotBlank(message: 'Author email cannot be blank')]
-    #[Assert\Email(message: 'Please enter a valid email address')]
-    #[Assert\Length(
-        max: 100,
-        maxMessage: 'Email cannot be longer than 100 characters')]
-    #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
-    private ?string $authorEmail = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     #[Groups(['comment:read', 'comment:list', 'post:read'])]
@@ -60,7 +41,7 @@ class Comment
 
     #[ORM\ManyToOne(inversedBy: 'comments')]
     #[ORM\JoinColumn(nullable: false)]
-    #[Groups(['comment:read', 'comment:list'])]
+    #[Assert\NotNull(message: 'Author is required')]
     private ?User $author = null;
 
     public function getId(): ?int
@@ -82,26 +63,12 @@ class Comment
 
     public function getAuthorName(): ?string
     {
-        return $this->authorName;
-    }
-
-    public function setAuthorName(string $authorName): static
-    {
-        $this->authorName = trim($authorName);
-
-        return $this;
+        return $this->author?->getUsername();
     }
 
     public function getAuthorEmail(): ?string
     {
-        return $this->authorEmail;
-    }
-
-    public function setAuthorEmail(string $authorEmail): static
-    {
-        $this->authorEmail = trim($authorEmail);
-
-        return $this;
+        return $this->author?->getEmail();
     }
 
     public function getCreatedAt(): ?\DateTimeInterface
@@ -154,6 +121,12 @@ class Comment
     public function getAuthor(): ?User
     {
         return $this->author;
+    }
+
+    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    public function getAuthorUsername(): ?string
+    {
+        return $this->author?->getUsername();
     }
 
     public function setAuthor(?User $author): static

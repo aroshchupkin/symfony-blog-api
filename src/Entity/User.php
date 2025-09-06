@@ -15,7 +15,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\HasLifecycleCallbacks]
-#[ORM\Table(name: '`users`')]
+#[ORM\Table(name: 'users')]
 #[ORM\Index(name: 'user_email_index', columns: ['email'])]
 #[ORM\Index(name: 'user_username_index', columns: ['username'])]
 #[UniqueEntity(fields: ['email'], message: 'This email is already registered')]
@@ -40,7 +40,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         pattern: '/^[a-zA-Z0-9_]+$/',
         message: 'Username can only contain letters, numbers, and underscores.'
     )]
-    #[Groups(['user:read', 'user:write', 'post:read', 'comment:read'])]
+    #[Groups(['user:read', 'user:write', 'post:read', 'comment:read', 'comment:list'])]
     private ?string $username = null;
 
 
