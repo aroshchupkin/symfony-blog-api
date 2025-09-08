@@ -31,7 +31,7 @@ services:
     image: postgres:13-alpine
     container_name: ${PROJECT_NAME}-postgres
     env_file:
-      - docker/.env
+      - .env
     environment:
       PGPASSWORD: '${DB_PASSWORD}'
       POSTGRES_DB: '${DB_DATABASE}'
