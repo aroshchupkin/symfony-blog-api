@@ -20,6 +20,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
+/**
+ * Comment Controller
+ */
 #[Route('/api/posts/{postId}/comments')]
 #[OA\Tag(name: 'Comments')]
 final class CommentController extends AbstractController
@@ -30,9 +33,6 @@ final class CommentController extends AbstractController
     ) {
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('', name: 'comments_index', requirements: ['postId' => '\d+'], methods: ['GET'])]
     #[OA\Get(
         path: '/api/posts/{postId}/comments',
@@ -115,15 +115,12 @@ final class CommentController extends AbstractController
             ], Response::HTTP_NOT_FOUND);
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('/{id}', name: 'comments_show', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['GET'])]
     #[OA\Get(
         path: '/api/posts/{postId}/comments/{id}',
@@ -187,15 +184,12 @@ final class CommentController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('', name: 'comments_create', requirements: ['postId' => '\d+'], methods: ['POST'])]
     #[OA\Post(
         path: '/api/posts/{postId}/comments',
@@ -298,15 +292,12 @@ final class CommentController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('/{id}', name: 'comments_update', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['PATCH'])]
     #[OA\Patch(
         path: '/api/posts/{postId}/comments/{id}',
@@ -439,15 +430,12 @@ final class CommentController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('/{id}', name: 'comments_delete', requirements: ['postId' => '\d+', 'id' => '\d+'], methods: ['DELETE'])]
     #[OA\Delete(
         path: '/api/posts/{postId}/comments/{id}',
@@ -554,8 +542,8 @@ final class CommentController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

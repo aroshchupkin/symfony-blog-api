@@ -15,6 +15,9 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
+/**
+ * Authentication Controller
+ */
 #[Route('/api')]
 #[OA\Tag(name: 'Authentication')]
 final class AuthController extends AbstractController

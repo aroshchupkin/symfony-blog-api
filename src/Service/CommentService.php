@@ -3,7 +3,6 @@
 namespace App\Service;
 
 use App\Entity\Comment;
-use App\Entity\Post;
 use App\Entity\User;
 use App\Exception\CommentNotFoundException;
 use App\Exception\InvalidInputException;
@@ -17,14 +16,17 @@ use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
-class CommentService
+/**
+ * Comment Service
+ */
+readonly class CommentService
 {
     public function __construct(
-        private readonly CommentRepository $commentRepository,
-        private readonly PostRepository $postRepository,
-        private readonly ValidatorInterface $validator,
-        private readonly SerializerInterface $serializer,
-        private readonly CacheService $cacheService
+        private CommentRepository   $commentRepository,
+        private PostRepository      $postRepository,
+        private ValidatorInterface  $validator,
+        private SerializerInterface $serializer,
+        private CacheService        $cacheService
     ) {
     }
 

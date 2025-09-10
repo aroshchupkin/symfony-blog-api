@@ -2,12 +2,16 @@
 
 namespace App\Service;
 
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
-use Symfony\Contracts\Cache\CacheInterface;
+
+/**
+ * Cache Service
+ */
 class CacheService
 {
-    private const CACHE_LIST_TIME = 300;
-    private const CACHE_DETAIL_TIME = 600;
+    private const CACHE_TTL_LIST = 300;
+    private const CACHE_TTL_DETAIL = 600;
 
     private const POST_LIST_KEY = 'post_list_page_%d_limit_%d';
     private const POST_DETAIL_KEY = 'post_detail_%d';
@@ -18,41 +22,66 @@ class CacheService
     private const LIMIT_STEP = 10;
     private const MAX_LIMIT = 100;
 
-    public function __construct(private readonly CacheInterface $cache)
+    /**
+     * Constructor
+     *
+     * @param CacheItemPoolInterface $cache
+     */
+    public function __construct(private readonly CacheItemPoolInterface $cache)
     {
     }
 
+    /**
+     * Get cache TTL for list operations
+     */
     public function getListCacheTime(): int
     {
-        return self::CACHE_LIST_TIME;
+        return self::CACHE_TTL_LIST;
     }
 
+    /**
+     * Get cache TTL for detail operations
+     */
     public function getItemCacheTime(): int
     {
-        return self::CACHE_DETAIL_TIME;
+        return self::CACHE_TTL_DETAIL;
     }
 
+    /**
+     * Generate cache key for posts list
+     */
     public function getPostsListCacheKey(int $page, int $limit): string
     {
         return sprintf(self::POST_LIST_KEY, $page, $limit);
     }
 
+    /**
+     * Generate cache key for post detail
+     */
     public function getPostDetailCacheKey(int $postId): string
     {
         return sprintf(self::POST_DETAIL_KEY, $postId);
     }
 
+    /**
+     * Generate cache key for comments list
+     */
     public function getCommentsListCacheKey(int $postId, int $page, int $limit): string
     {
         return sprintf(self::COMMENT_LIST_KEY, $postId, $page, $limit);
     }
 
+    /**
+     * Generate cache key for comment detail
+     */
     public function getCommentDetailCacheKey(int $commentId): string
     {
         return sprintf(self::COMMENT_DETAIL_KEY, $commentId);
     }
 
     /**
+     * Clear all posts list cache entries
+     *
      * @throws InvalidArgumentException
      */
     public function clearPostsListCache(): void
@@ -60,21 +89,25 @@ class CacheService
         for ($page = 1; $page <= self::MAX_PAGES_TO_CLEAR; $page++) {
             for ($limit = self::LIMIT_STEP; $limit <= self::MAX_LIMIT; $limit += self::LIMIT_STEP) {
                 $key = $this->getPostsListCacheKey($page, $limit);
-                $this->cache->delete($key);
+                $this->cache->deleteItem($key);
             }
         }
     }
 
     /**
+     * Clear specific post detail cache
+     *
      * @throws InvalidArgumentException
      */
     public function clearPostDetailCache(int $postId): void
     {
         $key = $this->getPostDetailCacheKey($postId);
-        $this->cache->delete($key);
+        $this->cache->deleteItem($key);
     }
 
     /**
+     * Clear all comments list cache for a specific post
+     *
      * @throws InvalidArgumentException
      */
     public function clearCommentsListCache(int $postId): void
@@ -82,21 +115,25 @@ class CacheService
         for ($page = 1; $page <= self::MAX_PAGES_TO_CLEAR; $page++) {
             for ($limit = self::LIMIT_STEP; $limit <= self::MAX_LIMIT; $limit += self::LIMIT_STEP) {
                 $key = $this->getCommentsListCacheKey($postId, $page, $limit);
-                $this->cache->delete($key);
+                $this->cache->deleteItem($key);
             }
         }
     }
 
     /**
+     * Clear specific comment detail cache
+     *
      * @throws InvalidArgumentException
      */
     public function clearCommentDetailCache(int $commentId): void
     {
         $key = $this->getCommentDetailCacheKey($commentId);
-        $this->cache->delete($key);
+        $this->cache->deleteItem($key);
     }
 
     /**
+     * Clear all cache related to a specific post
+     *
      * @throws InvalidArgumentException
      */
     public function clearPostRelatedCache(int $postId): void
@@ -107,6 +144,8 @@ class CacheService
     }
 
     /**
+     * Clear all cache related to a specific comment
+     *
      * @throws InvalidArgumentException
      */
     public function clearCommentRelatedCache(int $commentId, int $postId): void
@@ -115,7 +154,10 @@ class CacheService
         $this->clearCommentsListCache($postId);
     }
 
-    public function getCache(): CacheInterface
+    /**
+     * Get the cache pool instance
+     */
+    public function getCache(): CacheItemPoolInterface
     {
         return $this->cache;
     }
