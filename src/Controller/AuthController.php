@@ -3,29 +3,24 @@
 namespace App\Controller;
 
 use App\Entity\User;
-use App\Repository\UserRepository;
-use Lexik\Bundle\JWTAuthenticationBundle\Services\JWTTokenManagerInterface;
+use App\Exception\EmailAlreadyExistsException;
+use App\Exception\InvalidInputException;
+use App\Exception\ValidationException;
+use App\Service\UserService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 #[Route('/api')]
 #[OA\Tag(name: 'Authentication')]
 final class AuthController extends AbstractController
 {
     public function __construct(
-        private readonly UserRepository              $userRepository,
-        private readonly UserPasswordHasherInterface $passwordHasher,
-        private readonly ValidatorInterface          $validator,
-        private readonly SerializerInterface         $serializer,
-        private readonly JWTTokenManagerInterface    $JWTTokenManager
+        private readonly UserService $userService,
     )
     {
     }
@@ -86,65 +81,34 @@ final class AuthController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        if (!$data) {
+        try {
+            $user = $this->userService->registerUser($data);
+            $token = $this->userService->generateToken($user);
+            $userData = $this->userService->serializeUser($user);
+
             return new JsonResponse([
-                'error' => 'Invalid JSON body',
-                'code' => 'INVALID_JSON'
+                'message' => 'User successfully registered',
+                'code' => 'REGISTRATION_SUCCESS',
+                'user' => $userData,
+                'token' => $token,
+            ], Response::HTTP_CREATED);
+        } catch (InvalidInputException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_INPUT'
             ], Response::HTTP_BAD_REQUEST);
-        }
-
-        $requiredFields = ['username', 'email', 'password'];
-        foreach ($requiredFields as $field) {
-            if (!isset($data[$field]) || empty(trim($data[$field]))) {
-                return new JsonResponse([
-                    'error' => "Field '{$field}' is required",
-                    'code' => 'MISSING_FIELD'
-                ], Response::HTTP_BAD_REQUEST);
-            }
-        }
-
-        if ($this->userRepository->emailExists($data['email'])) {
+        } catch (EmailAlreadyExistsException $e) {
             return new JsonResponse([
-                'error' => 'Email already exists.',
+                'error' => $e->getMessage(),
                 'code' => 'EMAIL_EXISTS'
             ], Response::HTTP_CONFLICT);
-        }
-
-        $user = new User();
-        $user->setUsername($data['username']);
-        $user->setEmail($data['email']);
-        $user->setPlainPassword($data['password']);
-
-        $errors = $this->validator->validate($user, null, ['registration']);
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            }
-
+        } catch (ValidationException $e) {
             return new JsonResponse([
-                'error' => 'Validation failed',
+                'error' => $e->getMessage(),
                 'code' => 'VALIDATION_ERROR',
-                'details' => $errorMessages
+                'details' => $e->getValidationErrors()
             ], Response::HTTP_BAD_REQUEST);
         }
-
-        $hashedPassword = $this->passwordHasher->hashPassword($user, $user->getPlainPassword());
-        $user->setPassword($hashedPassword);
-        $user->eraseCredentials();
-
-        $this->userRepository->save($user, true);
-
-        $token = $this->JWTTokenManager->create($user);
-
-        $userData = $this->serializer->serialize($user, 'json', ['groups' => ['user:read']]);
-
-        return new JsonResponse([
-            'message' => 'User registered successfully',
-            'code' => 'REGISTRATION_SUCCESS',
-            'user' => json_decode($userData, true),
-            'token' => $token
-        ], Response::HTTP_CREATED);
     }
 
     #[Route('/login', name: 'api_login', methods: ['POST'])]
@@ -230,10 +194,10 @@ final class AuthController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $userData = $this->serializer->serialize($user, 'json', ['groups' => ['user:read']]);
+        $userData = $this->userService->serializeUser($user);
 
         return new JsonResponse([
-            'user' => json_decode($userData, true),
+            'user' => $userData,
         ], Response::HTTP_OK);
     }
 }

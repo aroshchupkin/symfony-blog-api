@@ -4,8 +4,11 @@ namespace App\Controller;
 
 use App\Entity\Post;
 use App\Entity\User;
-use App\Repository\PostRepository;
-use App\Service\CacheService;
+use App\Exception\AccessDeniedException;
+use App\Exception\InvalidInputException;
+use App\Exception\PostNotFoundException;
+use App\Exception\ValidationException;
+use App\Service\PostService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Psr\Cache\InvalidArgumentException;
@@ -15,25 +18,18 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/api/posts')]
 #[OA\Tag(name: 'Posts')]
 final class PostController extends AbstractController
 {
     public function __construct(
-        private readonly PostRepository      $postRepository,
+        private readonly PostService         $postService,
         private readonly SerializerInterface $serializer,
-        private readonly ValidatorInterface  $validator,
-        private readonly CacheService        $cacheService
     )
     {
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('', name: 'posts_index', methods: ['GET'])]
     #[OA\Get(
         path: '/api/posts',
@@ -87,36 +83,19 @@ final class PostController extends AbstractController
         $page = max(1, (int)$request->query->get('page', 1));
         $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
 
-        $cacheKey = $this->cacheService->getPostsListCacheKey($page, $limit);
+        try {
+            $result = $this->postService->getPostsWithPagination($page, $limit);
+            $data = $this->serializer->serialize($result, 'json', ['groups' => ['post:list']]);
 
-        $result = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($page, $limit) {
-            $item->expiresAfter($this->cacheService->getListCacheTime());
-
-            $posts = $this->postRepository->findAllWithPagination($page, $limit);
-            $total = $this->postRepository->countAll();
-            $totalPages = (int)ceil($total / $limit);
-
-            return [
-                'posts' => $posts,
-                'pagination' => [
-                    'current_page' => $page,
-                    'total_pages' => $totalPages,
-                    'total_items' => $total,
-                    'items_per_page' => $limit,
-                    'has_next_page' => $page < $totalPages,
-                    'has_previous_page' => $page > 1,
-                ]
-            ];
-        });
-
-        $data = $this->serializer->serialize($result, 'json', ['groups' => ['post:list']]);
-
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
+            return new JsonResponse($data, Response::HTTP_OK, [], true);
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('/{id}', name: 'posts_show', requirements: ['id' => '\d+'], methods: ['GET'])]
     #[OA\Get(
         path: '/api/posts/{id}',
@@ -150,29 +129,25 @@ final class PostController extends AbstractController
     )]
     public function show(int $id): JsonResponse
     {
-        $cacheKey = $this->cacheService->getPostDetailCacheKey($id);
+        try {
+            $post = $this->postService->getPostById($id);
+            $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
 
-        $post = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($id) {
-            $item->expiresAfter($this->cacheService->getListCacheTime());
-
-            return $this->postRepository->find($id);
-        });
-
-        if (!$post) {
+            return new JsonResponse($data, Response::HTTP_OK, [], true);
+        } catch (PostNotFoundException $e) {
             return new JsonResponse([
-                'error' => 'Post not found',
+                'error' => $e->getMessage(),
                 'code' => 'POST_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
-
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('', name: 'posts_create', methods: ['POST'])]
     #[OA\Post(
         path: '/api/posts',
@@ -222,13 +197,6 @@ final class PostController extends AbstractController
     {
         $data = json_decode($request->getContent(), true);
 
-        if (!$data) {
-            return new JsonResponse([
-                'error' => 'Invalid JSON body',
-                'code' => 'INVALID_JSON'
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
         $user = $this->getUser();
         if (!$user instanceof User) {
             return new JsonResponse([
@@ -237,44 +205,33 @@ final class PostController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $post = new Post();
-        $post->setAuthor($user);
+        try {
+            $post = $this->postService->createPost($data, $user);
+            $postData = $this->postService->serializePost($post);
 
-        if (isset($data['title'])) {
-            $post->setTitle($data['title']);
-        }
+            return new JsonResponse($postData, Response::HTTP_CREATED);
 
-        if (isset($data['content'])) {
-            $post->setContent($data['content']);
-        }
-
-        $errors = $this->validator->validate($post);
-
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            }
-
+        } catch (InvalidInputException $e) {
             return new JsonResponse([
-                'error' => 'Validation failed',
-                'code' => 'VALIDATION_ERROR',
-                'details' => $errorMessages
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_INPUT'
             ], Response::HTTP_BAD_REQUEST);
+
+        } catch (ValidationException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'VALIDATION_ERROR',
+                'details' => $e->getValidationErrors()
+            ], Response::HTTP_BAD_REQUEST);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $this->postRepository->save($post, true);
-
-        $this->cacheService->clearPostsListCache();
-
-        $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
-
-        return new JsonResponse($data, Response::HTTP_CREATED, [], true);
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('/{id}', name: 'posts_update', requirements: ['id' => '\d+'], methods: ['PATCH'])]
     #[OA\Patch(
         path: '/api/posts/{id}',
@@ -349,6 +306,8 @@ final class PostController extends AbstractController
     )]
     public function update(int $id, Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true);
+
         $user = $this->getUser();
         if (!$user instanceof User) {
             return new JsonResponse([
@@ -357,67 +316,45 @@ final class PostController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $post = $this->postRepository->find($id);
+        try {
+            $post = $this->postService->updatePost($id, $data, $user);
+            $postData = $this->postService->serializePost($post);
 
-        if (!$post) {
+            return new JsonResponse($postData, Response::HTTP_OK);
+
+        } catch (PostNotFoundException $e) {
             return new JsonResponse([
-                'error' => 'Post not found',
+                'error' => $e->getMessage(),
                 'code' => 'POST_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
-        }
 
-        if ($post->getAuthor() !== $user) {
+        } catch (AccessDeniedException $e) {
             return new JsonResponse([
-                'error' => 'Access denied. You can only update your own posts',
+                'error' => $e->getMessage(),
                 'code' => 'ACCESS_DENIED'
             ], Response::HTTP_FORBIDDEN);
-        }
 
-        $data = json_decode($request->getContent(), true);
-
-        if (!$data) {
+        } catch (InvalidInputException $e) {
             return new JsonResponse([
-                'error' => 'Invalid JSON body',
-                'code' => 'INVALID_JSON'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_INPUT'
             ], Response::HTTP_BAD_REQUEST);
-        }
 
-        if (isset($data['title'])) {
-            $post->setTitle($data['title']);
-        }
-
-        if (isset($data['content'])) {
-            $post->setContent($data['content']);
-        }
-
-        $errors = $this->validator->validate($post);
-
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            }
-
+        } catch (ValidationException $e) {
             return new JsonResponse([
-                'error' => 'Validation failed',
+                'error' => $e->getMessage(),
                 'code' => 'VALIDATION_ERROR',
-                'details' => $errorMessages
+                'details' => $e->getValidationErrors()
             ], Response::HTTP_BAD_REQUEST);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $this->postRepository->save($post, true);
-
-        $this->cacheService->clearPostDetailCache($id);
-        $this->cacheService->clearPostsListCache();
-
-        $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
-
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
-    /**
-     * @throws InvalidArgumentException
-     */
     #[Route('/{id}', name: 'posts_delete', requirements: ['id' => '\d+'], methods: ['DELETE'])]
     #[OA\Delete(
         path: '/api/posts/{id}',
@@ -485,29 +422,31 @@ final class PostController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $post = $this->postRepository->find($id);
+        try {
+            $this->postService->deletePost($id, $user);
 
-        if (!$post) {
             return new JsonResponse([
-                'error' => 'Post not found',
+                'message' => 'Post deleted successfully',
+                'code' => 'POST_DELETED'
+            ], Response::HTTP_OK);
+
+        } catch (PostNotFoundException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
                 'code' => 'POST_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
-        }
 
-        if ($post->getAuthor() !== $user) {
+        } catch (AccessDeniedException $e) {
             return new JsonResponse([
-                'error' => 'Access denied. You can only delete your own posts',
+                'error' => $e->getMessage(),
                 'code' => 'ACCESS_DENIED'
             ], Response::HTTP_FORBIDDEN);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $this->postRepository->remove($post, true);
-
-        $this->cacheService->clearPostRelatedCache($id);
-
-        return new JsonResponse([
-            'message' => 'Post deleted successfully',
-            'code' => 'POST_DELETED'
-        ], Response::HTTP_OK);
     }
 }
