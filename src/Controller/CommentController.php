@@ -4,9 +4,12 @@ namespace App\Controller;
 
 use App\Entity\Comment;
 use App\Entity\User;
-use App\Repository\CommentRepository;
-use App\Repository\PostRepository;
-use App\Service\CacheService;
+use App\Exception\AccessDeniedException;
+use App\Exception\CommentNotFoundException;
+use App\Exception\InvalidInputException;
+use App\Exception\PostNotFoundException;
+use App\Exception\ValidationException;
+use App\Service\CommentService;
 use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Psr\Cache\InvalidArgumentException;
@@ -16,21 +19,15 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Contracts\Cache\ItemInterface;
 
 #[Route('/api/posts/{postId}/comments')]
 #[OA\Tag(name: 'Comments')]
 final class CommentController extends AbstractController
 {
     public function __construct(
-        private readonly CommentRepository   $commentRepository,
-        private readonly PostRepository      $postRepository,
-        private readonly SerializerInterface $serializer,
-        private readonly ValidatorInterface  $validator,
-        private readonly CacheService        $cacheService
-    )
-    {
+        private readonly CommentService $commentService,
+        private readonly SerializerInterface $serializer
+    ) {
     }
 
     /**
@@ -103,43 +100,25 @@ final class CommentController extends AbstractController
     )]
     public function index(int $postId, Request $request): JsonResponse
     {
-        $post = $this->postRepository->find($postId);
-
-        if (!$post) {
-            return new JsonResponse([
-                'error' => 'Post not found',
-                'code' => 'POST_NOT_FOUND',
-            ], Response::HTTP_NOT_FOUND);
-        }
-
         $page = max(1, (int)$request->query->get('page', 1));
         $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
 
-        $cacheKey = $this->cacheService->getCommentsListCacheKey($postId, $page, $limit);
+        try {
+            $result = $this->commentService->getCommentsForPost($postId, $page, $limit);
+            $data = $this->serializer->serialize($result, 'json', ['groups' => ['comment:list']]);
 
-        $result = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($post, $page, $limit) {
-            $item->expiresAfter($this->cacheService->getListCacheTime());
-
-            $comments = $this->commentRepository->findByPostWithPagination($post, $page, $limit);
-            $total = $this->commentRepository->countByPost($post);
-            $totalPages = (int)ceil($total / $limit);
-
-            return [
-                'comments' => $comments,
-                'pagination' => [
-                    'current_page' => $page,
-                    'total_pages' => $totalPages,
-                    'total_items' => $total,
-                    'items_per_page' => $limit,
-                    'has_next_page' => $page < $totalPages,
-                    'has_previous_page' => $page > 1
-                ]
-            ];
-        });
-
-        $data = $this->serializer->serialize($result, 'json', ['groups' => ['comment:list']]);
-
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
+            return new JsonResponse($data, Response::HTTP_OK, [], true);
+        } catch (PostNotFoundException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'POST_NOT_FOUND'
+            ], Response::HTTP_NOT_FOUND);
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
@@ -185,33 +164,33 @@ final class CommentController extends AbstractController
     )]
     public function show(int $postId, int $id): JsonResponse
     {
-        $post = $this->postRepository->find($postId);
+        try {
+            $comment = $this->commentService->getCommentById($id);
 
-        if (!$post) {
+            // Verify comment belongs to the specified post
+            if ($comment->getPost()->getId() !== $postId) {
+                return new JsonResponse([
+                    'error' => 'Comment not found',
+                    'code' => 'COMMENT_NOT_FOUND'
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:list']]);
+
+            return new JsonResponse($data, Response::HTTP_OK, [], true);
+
+        } catch (CommentNotFoundException $e) {
             return new JsonResponse([
-                'error' => 'Post not found',
-                'code' => 'POST_NOT_FOUND',
+                'error' => $e->getMessage(),
+                'code' => 'COMMENT_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
-        }
 
-        $cacheKey = $this->cacheService->getCommentDetailCacheKey($id);
-
-        $comment = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($id) {
-            $item->expiresAfter($this->cacheService->getListCacheTime());
-
-            return $this->commentRepository->find($id);
-        });
-
-        if (!$comment || $comment->getPost()->getId() !== $post->getId()) {
+        } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Comment not found',
-                'code' => 'COMMENT_NOT_FOUND',
-            ], Response::HTTP_NOT_FOUND);
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:list']]);
-
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
     /**
@@ -282,23 +261,7 @@ final class CommentController extends AbstractController
     )]
     public function create(int $postId, Request $request): JsonResponse
     {
-        $post = $this->postRepository->find($postId);
-
-        if (!$post) {
-            return new JsonResponse([
-                'error' => 'Post not found',
-                'code' => 'POST_NOT_FOUND',
-            ], Response::HTTP_NOT_FOUND);
-        }
-
         $data = json_decode($request->getContent(), true);
-
-        if (!$data) {
-            return new JsonResponse([
-                'error' => 'Invalid JSON',
-                'code' => 'INVALID_JSON'
-            ], Response::HTTP_BAD_REQUEST);
-        }
 
         $user = $this->getUser();
         if (!$user instanceof User) {
@@ -308,36 +271,37 @@ final class CommentController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $comment = new Comment();
-        $comment->setPost($post);
-        $comment->setAuthor($user);
+        try {
+            $comment = $this->commentService->createComment($data, $postId, $user);
+            $commentData = $this->commentService->serializeComment($comment);
 
-        if (isset($data['content'])) {
-            $comment->setContent($data['content']);
-        }
+            return new JsonResponse($commentData, Response::HTTP_CREATED);
 
-        $errors = $this->validator->validate($comment);
-
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            }
-
+        } catch (PostNotFoundException $e) {
             return new JsonResponse([
-                'error' => 'Validation failed',
-                'code' => 'VALIDATION_ERROR',
-                'details' => $errorMessages
+                'error' => $e->getMessage(),
+                'code' => 'POST_NOT_FOUND'
+            ], Response::HTTP_NOT_FOUND);
+
+        } catch (InvalidInputException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_INPUT'
             ], Response::HTTP_BAD_REQUEST);
+
+        } catch (ValidationException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'VALIDATION_ERROR',
+                'details' => $e->getValidationErrors()
+            ], Response::HTTP_BAD_REQUEST);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $this->commentRepository->save($comment, true);
-
-        $this->cacheService->clearCommentsListCache($postId);
-
-        $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:read']]);
-
-        return new JsonResponse($data, Response::HTTP_CREATED, [], true);
     }
 
     /**
@@ -423,6 +387,8 @@ final class CommentController extends AbstractController
     )]
     public function update(int $postId, int $id, Request $request): JsonResponse
     {
+        $data = json_decode($request->getContent(), true);
+
         $user = $this->getUser();
         if (!$user instanceof User) {
             return new JsonResponse([
@@ -431,66 +397,52 @@ final class CommentController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $post = $this->postRepository->find($postId);
+        try {
+            $comment = $this->commentService->updateComment($id, $data, $user);
 
-        if (!$post) {
-            return new JsonResponse([
-                'error' => 'Post not found',
-                'code' => 'POST_NOT_FOUND',
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        $comment = $this->commentRepository->find($id);
-
-        if (!$comment || $comment->getPost()->getId() !== $post->getId()) {
-            return new JsonResponse([
-                'error' => 'Comment not found',
-                'code' => 'COMMENT_NOT_FOUND',
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($comment->getAuthor() !== $user) {
-            return new JsonResponse([
-                'error' => 'Access denied. You can only update your own comments',
-                'code' => 'ACCESS_DENIED'
-            ], Response::HTTP_FORBIDDEN);
-        }
-
-        $data = json_decode($request->getContent(), true);
-
-        if (!$data) {
-            return new JsonResponse([
-                'error' => 'Invalid JSON',
-                'code' => 'INVALID_JSON'
-            ], Response::HTTP_BAD_REQUEST);
-        }
-
-        if (isset($data['content'])) {
-            $comment->setContent($data['content']);
-        }
-
-        $errors = $this->validator->validate($comment);
-
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
+            // Verify comment belongs to the specified post
+            if ($comment->getPost()->getId() !== $postId) {
+                return new JsonResponse([
+                    'error' => 'Comment not found',
+                    'code' => 'COMMENT_NOT_FOUND'
+                ], Response::HTTP_NOT_FOUND);
             }
 
+            $commentData = $this->commentService->serializeComment($comment);
+
+            return new JsonResponse($commentData, Response::HTTP_OK);
+
+        } catch (CommentNotFoundException $e) {
             return new JsonResponse([
-                'error' => 'Validation failed',
-                'code' => 'VALIDATION_ERROR',
-                'details' => $errorMessages
+                'error' => $e->getMessage(),
+                'code' => 'COMMENT_NOT_FOUND'
+            ], Response::HTTP_NOT_FOUND);
+
+        } catch (AccessDeniedException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'ACCESS_DENIED'
+            ], Response::HTTP_FORBIDDEN);
+
+        } catch (InvalidInputException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_INPUT'
             ], Response::HTTP_BAD_REQUEST);
+
+        } catch (ValidationException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'VALIDATION_ERROR',
+                'details' => $e->getValidationErrors()
+            ], Response::HTTP_BAD_REQUEST);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $this->commentRepository->save($comment, true);
-
-        $this->cacheService->clearCommentRelatedCache($id, $postId);
-
-        $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:read']]);
-
-        return new JsonResponse($data, Response::HTTP_OK, [], true);
     }
 
     /**
@@ -570,38 +522,41 @@ final class CommentController extends AbstractController
             ], Response::HTTP_UNAUTHORIZED);
         }
 
-        $post = $this->postRepository->find($postId);
+        try {
+            // First get the comment to verify it belongs to the post
+            $comment = $this->commentService->getCommentById($id);
 
-        if (!$post) {
+            if ($comment->getPost()->getId() !== $postId) {
+                return new JsonResponse([
+                    'error' => 'Comment not found',
+                    'code' => 'COMMENT_NOT_FOUND'
+                ], Response::HTTP_NOT_FOUND);
+            }
+
+            $this->commentService->deleteComment($id, $user);
+
             return new JsonResponse([
-                'error' => 'Post not found',
-                'code' => 'POST_NOT_FOUND',
+                'message' => 'Comment deleted successfully',
+                'code' => 'COMMENT_DELETED'
+            ], Response::HTTP_OK);
+
+        } catch (CommentNotFoundException $e) {
+            return new JsonResponse([
+                'error' => $e->getMessage(),
+                'code' => 'COMMENT_NOT_FOUND'
             ], Response::HTTP_NOT_FOUND);
-        }
 
-        $comment = $this->commentRepository->find($id);
-
-        if (!$comment || $comment->getPost()->getId() !== $post->getId()) {
+        } catch (AccessDeniedException $e) {
             return new JsonResponse([
-                'error' => 'Comment not found',
-                'code' => 'COMMENT_NOT_FOUND',
-            ], Response::HTTP_NOT_FOUND);
-        }
-
-        if ($comment->getAuthor() !== $user) {
-            return new JsonResponse([
-                'error' => 'Access denied. You can only delete your own comments',
+                'error' => $e->getMessage(),
                 'code' => 'ACCESS_DENIED'
             ], Response::HTTP_FORBIDDEN);
+
+        } catch (InvalidArgumentException $e) {
+            return new JsonResponse([
+                'error' => 'Cache error occurred',
+                'code' => 'CACHE_ERROR'
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $this->commentRepository->remove($comment, true);
-
-        $this->cacheService->clearCommentRelatedCache($id, $postId);
-
-        return new JsonResponse([
-            'message' => 'Comment deleted successfully',
-            'code' => 'COMMENT_DELETED'
-        ], Response::HTTP_OK);
     }
 }
