@@ -19,6 +19,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Serializer\SerializerInterface;
 
+/**
+ * Post Controller
+ */
 #[Route('/api/posts')]
 #[OA\Tag(name: 'Posts')]
 final class PostController extends AbstractController
@@ -90,8 +93,8 @@ final class PostController extends AbstractController
             return new JsonResponse($data, Response::HTTP_OK, [], true);
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -142,8 +145,8 @@ final class PostController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -226,8 +229,8 @@ final class PostController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -349,8 +352,8 @@ final class PostController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
@@ -444,8 +447,8 @@ final class PostController extends AbstractController
 
         } catch (InvalidArgumentException $e) {
             return new JsonResponse([
-                'error' => 'Cache error occurred',
-                'code' => 'CACHE_ERROR'
+                'error' => $e->getMessage(),
+                'code' => 'INVALID_ARGUMENT'
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }

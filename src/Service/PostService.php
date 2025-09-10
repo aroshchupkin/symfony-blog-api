@@ -13,6 +13,9 @@ use Psr\Cache\InvalidArgumentException;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
+/**
+ * Post Service
+ */
 readonly class PostService
 {
     public function __construct(

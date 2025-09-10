@@ -10,15 +10,28 @@ use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\PasswordUpgraderInterface;
 
 /**
+ * User Repository
+ *
  * @extends ServiceEntityRepository<User>
  */
 class UserRepository extends ServiceEntityRepository implements PasswordUpgraderInterface
 {
+    /**
+     * Constructor
+     *
+     * @param ManagerRegistry $registry
+     */
     public function __construct(ManagerRegistry $registry)
     {
         parent::__construct($registry, User::class);
     }
 
+    /**
+     * Save user entity to database
+     *
+     * @param User $user User entity to save
+     * @param bool $flush Whether to immediately flush changes to database
+     */
     public function save(User $user, bool $flush = false): void
     {
         $this->getEntityManager()->persist($user);
@@ -28,6 +41,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         }
     }
 
+    /**
+     * Remove user entity from database
+     *
+     * @param User $user User entity to remove
+     * @param bool $flush Whether to immediately flush changes to database
+     */
     public function remove(User $user, bool $flush = false): void
     {
         $this->getEntityManager()->remove($user);
@@ -38,7 +57,11 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
     }
 
     /**
-     * Used to upgrade (rehash) the user's password automatically over time.
+     * Used to upgrade the user's password automatically over time.
+     *
+     * @param PasswordAuthenticatedUserInterface $user User to upgrade password for
+     * @param string $newHashedPassword New hashed password
+     * @throws UnsupportedUserException
      */
     public function upgradePassword(PasswordAuthenticatedUserInterface $user, string $newHashedPassword): void
     {
@@ -51,6 +74,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
         $this->getEntityManager()->flush();
     }
 
+    /**
+     * Find user by email address
+     *
+     * @param string $email
+     * @return User|null
+     */
     public function findByEmail(string $email): ?User
     {
         return $this->createQueryBuilder('u')
@@ -60,6 +89,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getOneOrNullResult();
     }
 
+    /**
+     * Find user by username
+     *
+     * @param string $username
+     * @return User|null
+     */
     public function findByUsername(string $username): ?User
     {
         return $this->createQueryBuilder('u')
@@ -69,6 +104,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getOneOrNullResult();
     }
 
+    /**
+     * Check if email address already exists in database
+     *
+     * @param string $email
+     * @return bool
+     */
     public function emailExists(string $email): bool
     {
         return $this->createQueryBuilder('u')
@@ -79,6 +120,12 @@ class UserRepository extends ServiceEntityRepository implements PasswordUpgrader
             ->getSingleScalarResult() > 0;
     }
 
+    /**
+     * Check if username already exists in database
+     *
+     * @param string $username
+     * @return bool
+     */
     public function usernameExists(string $username): bool
     {
         return $this->createQueryBuilder('u')
