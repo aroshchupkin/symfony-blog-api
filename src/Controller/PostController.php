@@ -2,14 +2,12 @@
 
 namespace App\Controller;
 
-use App\Entity\Post;
 use App\Entity\User;
 use App\Exception\AccessDeniedException;
 use App\Exception\InvalidInputException;
 use App\Exception\PostNotFoundException;
 use App\Exception\ValidationException;
 use App\Service\PostService;
-use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -38,47 +36,11 @@ final class PostController extends AbstractController
         path: '/api/posts',
         description: 'Return paginated list of blog posts',
         parameters: [
-            new OA\Parameter(
-                name: 'page',
-                description: 'Page number',
-                in: 'query',
-                required: false,
-                schema: new OA\Schema(type: 'integer', default: 1, minimum: 1)
-            ),
-            new OA\Parameter(
-                name: 'limit',
-                description: 'Items per page',
-                in: 'query',
-                required: false,
-                schema: new OA\Schema(type: 'integer', default: 10, maximum: 100, minimum: 1)
-            )
+            new OA\Parameter(ref: '#/components/parameters/PageParameter'),
+            new OA\Parameter(ref: '#/components/parameters/LimitParameter')
         ],
         responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Posts list with pagination',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(
-                            property: 'posts',
-                            type: 'array',
-                            items: new OA\Items(ref: new Model(type: Post::class, groups: ['post:list']))
-                        ),
-                        new OA\Property(
-                            property: 'pagination',
-                            properties: [
-                                new OA\Property(property: 'current_page', type: 'integer'),
-                                new OA\Property(property: 'total_pages', type: 'integer'),
-                                new OA\Property(property: 'total_items', type: 'integer'),
-                                new OA\Property(property: 'items_per_page', type: 'integer'),
-                                new OA\Property(property: 'has_next_page', type: 'boolean'),
-                                new OA\Property(property: 'has_previous_page', type: 'boolean')
-                            ],
-                            type: 'object'
-                        )
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/PostListSuccess', response: 200)
         ]
     )]
     public function index(Request $request): JsonResponse
@@ -104,30 +66,11 @@ final class PostController extends AbstractController
         path: '/api/posts/{id}',
         description: 'Return detailed information about a specific post with comments',
         parameters: [
-            new OA\Parameter(
-                name: 'id',
-                description: 'Post ID',
-                in: 'path',
-                required: true,
-                schema: new OA\Schema(type: 'integer')
-            )
+            new OA\Parameter(ref: '#/components/parameters/PostIdParameter')
         ],
         responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Post details',
-                content: new OA\JsonContent(ref: new Model(type: Post::class, groups: ['post:read']))
-            ),
-            new OA\Response(
-                response: 404,
-                description: 'Post not found',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Post not found'),
-                        new OA\Property(property: 'code', type: 'string', example: 'POST_NOT_FOUND')
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/PostSuccess', response: 200),
+            new OA\Response(ref: '#/components/responses/NotFound', response: 404),
         ]
     )]
     public function show(int $id): JsonResponse
@@ -156,44 +99,11 @@ final class PostController extends AbstractController
         path: '/api/posts',
         description: 'Creates a new blog post (authentication required)',
         security: [['Bearer' => []]],
-        requestBody: new OA\RequestBody(
-            description: 'Post data',
-            required: true,
-            content: new OA\JsonContent(
-                required: ['title', 'content'],
-                properties: [
-                    new OA\Property(property: 'title', type: 'string', example: 'My Blog Post'),
-                    new OA\Property(property: 'content', type: 'string', example: 'This is the content of my blog post...')
-                ]
-            )
-        ),
+        requestBody: new OA\RequestBody(ref: '#/components/requestBodies/PostRequest'),
         responses: [
-            new OA\Response(
-                response: 201,
-                description: 'Post created successfully',
-                content: new OA\JsonContent(ref: new Model(type: Post::class, groups: ['post:read']))
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Validation error',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Validation failed'),
-                        new OA\Property(property: 'code', type: 'string', example: 'VALIDATION_ERROR'),
-                        new OA\Property(property: 'details', type: 'object')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: 'Authentication required',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'User not authenticated'),
-                        new OA\Property(property: 'code', type: 'string', example: 'USER_NOT_AUTHENTICATED')
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/PostCreated', response: 201),
+            new OA\Response(ref: '#/components/responses/ValidationError', response: 400),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
         ]
     )]
     public function create(Request $request): JsonResponse
@@ -240,71 +150,16 @@ final class PostController extends AbstractController
         path: '/api/posts/{id}',
         description: 'Updates an existing post (only author can update)',
         security: [['Bearer' => []]],
-        requestBody: new OA\RequestBody(
-            description: 'Updated post data',
-            required: true,
-            content: new OA\JsonContent(
-                properties: [
-                    new OA\Property(property: 'title', type: 'string', example: 'Updated Blog Post Title'),
-                    new OA\Property(property: 'content', type: 'string', example: 'Updated content...')
-                ]
-            )
-        ),
+        requestBody: new OA\RequestBody(ref: '#/components/requestBodies/PostRequest'),
         parameters: [
-            new OA\Parameter(
-                name: 'id',
-                description: 'Post ID',
-                in: 'path',
-                required: true,
-                schema: new OA\Schema(type: 'integer')
-            )
+            new OA\Parameter(ref: '#/components/parameters/PostIdParameter')
         ],
         responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Post updated successfully',
-                content: new OA\JsonContent(ref: new Model(type: Post::class, groups: ['post:read']))
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Validation error',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Validation failed'),
-                        new OA\Property(property: 'code', type: 'string', example: 'VALIDATION_ERROR')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: 'Authentication required',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'User not authenticated'),
-                        new OA\Property(property: 'code', type: 'string', example: 'USER_NOT_AUTHENTICATED')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 403,
-                description: 'Access denied',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Access denied. You can only update your own posts'),
-                        new OA\Property(property: 'code', type: 'string', example: 'ACCESS_DENIED')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 404,
-                description: 'Post not found',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Post not found'),
-                        new OA\Property(property: 'code', type: 'string', example: 'POST_NOT_FOUND')
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/PostUpdated', response: 200),
+            new OA\Response(ref: '#/components/responses/ValidationError', response: 400),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+            new OA\Response(ref: '#/components/responses/Forbidden', response: 403),
+            new OA\Response(ref: '#/components/responses/NotFound', response: 404),
         ]
     )]
     public function update(int $id, Request $request): JsonResponse
@@ -364,55 +219,13 @@ final class PostController extends AbstractController
         description: 'Deletes a post (only author can delete)',
         security: [['Bearer' => []]],
         parameters: [
-            new OA\Parameter(
-                name: 'id',
-                description: 'Post ID',
-                in: 'path',
-                required: true,
-                schema: new OA\Schema(type: 'integer')
-            )
+            new OA\Parameter(ref: '#/components/parameters/PostIdParameter')
         ],
         responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Post deleted successfully',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'message', type: 'string', example: 'Post deleted successfully'),
-                        new OA\Property(property: 'code', type: 'string', example: 'POST_DELETED')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: 'Authentication required',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'User not authenticated'),
-                        new OA\Property(property: 'code', type: 'string', example: 'USER_NOT_AUTHENTICATED')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 403,
-                description: 'Access denied',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Access denied. You can only delete your own posts'),
-                        new OA\Property(property: 'code', type: 'string', example: 'ACCESS_DENIED')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 404,
-                description: 'Post not found',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Post not found'),
-                        new OA\Property(property: 'code', type: 'string', example: 'POST_NOT_FOUND')
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/PostDeleted', response: 200),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
+            new OA\Response(ref: '#/components/responses/Forbidden', response: 403),
+            new OA\Response(ref: '#/components/responses/NotFound', response: 404),
         ]
     )]
     public function delete(int $id): JsonResponse

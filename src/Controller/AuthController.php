@@ -7,7 +7,6 @@ use App\Exception\EmailAlreadyExistsException;
 use App\Exception\InvalidInputException;
 use App\Exception\ValidationException;
 use App\Service\UserService;
-use Nelmio\ApiDocBundle\Attribute\Model;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -32,52 +31,11 @@ final class AuthController extends AbstractController
     #[OA\Post(
         path: '/api/registration',
         description: 'Create a new User and return JWT Token',
-        requestBody: new OA\RequestBody(
-            description: 'Register a new user',
-            required: true,
-            content: new OA\JsonContent(
-                required: ['username', 'email', 'password'],
-                properties: [
-                    new OA\Property(property: 'username', type: 'string', example: 'Joey'),
-                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'joey@gmail.com'),
-                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'joey@gmail.com'),
-                ]
-            )
-        ),
+        requestBody: new OA\RequestBody(ref: '#/components/requestBodies/RegistrationRequest'),
         responses: [
-            new OA\Response(
-                response: 201,
-                description: 'User registered successfully',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'message', type: 'string', example: 'User registered successfully'),
-                        new OA\Property(property: 'code', type: 'string', example: 'REGISTRATION_SUCCESS'),
-                        new OA\Property(property: 'user', ref: new Model(type: User::class, groups: ['user:read'])),
-                        new OA\Property(property: 'token', type: 'string', example: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NTcxNTQ3NjIsImV4cCI6MTc1NzE1ODM2Miwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImVtYWlsIjoiam9leUBnbWFpbC5jb20ifQ.bhx4mNcYrJsYxcPOROWrGql-gX8qd8Iqx3jOzELUtyM5iGitWFkqoIQqjhGjO2j8jbHPUY5vect4Ap8tKSo0quBRubWZf_p83qPM4Y9G6eJpbyhOe90PpvTJkCW6PGDOh67o_8YNBBW_JTxd8z-HDWp2_dOQuKVPpxd8yckaIh6FxbVR8IjSx118jbkkjHE5abyHuGHHg52TzNFaX48PerD9SCdiwlGwriCziBqEJ0egnwEoPoqFwLq9aUOKHFSuKZ8uUC-GKIO2Dj6GN7go87o51pXfB6enw7dsHkCAEWE-DiVd_4IcYYErzEr8sdWYjNIcQ31XGq8ULHvrl1mGzw'),
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 400,
-                description: 'Validation error',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Validation failed'),
-                        new OA\Property(property: 'code', type: 'string', example: 'VALIDATION_ERROR'),
-                        new OA\Property(property: 'details', type: 'object')
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 409,
-                description: 'Email already exists',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'Email already exists.'),
-                        new OA\Property(property: 'code', type: 'string', example: 'EMAIL_EXISTS'),
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/RegistrationSuccess', response: 201),
+            new OA\Response(ref: '#/components/responses/ValidationError', response: 400),
+            new OA\Response(ref: '#/components/responses/EmailExists', response: 409),
         ]
     )]
     public function registration(Request $request): JsonResponse
@@ -118,38 +76,10 @@ final class AuthController extends AbstractController
     #[OA\Post(
         path: '/api/login',
         description: 'Authenticate User and return JWT token',
-        requestBody: new OA\RequestBody(
-            description: 'User credentials',
-            required: true,
-            content: new OA\JsonContent(
-                required: ['email', 'password'],
-                properties: [
-                    new OA\Property(property: 'email', type: 'string', format: 'email', example: 'joey@gmail.com'),
-                    new OA\Property(property: 'password', type: 'string', format: 'password', example: 'joey@gmail.com')
-                ]
-            )
-        ),
+        requestBody: new OA\RequestBody(ref: '#/components/requestBodies/LoginRequest'),
         responses: [
-            new OA\Response(
-                response: 200,
-                description: 'Login successful',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'token', type: 'string', example: 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJpYXQiOjE3NTcxNTQ3NjIsImV4cCI6MTc1NzE1ODM2Miwicm9sZXMiOlsiUk9MRV9VU0VSIl0sImVtYWlsIjoiam9leUBnbWFpbC5jb20ifQ.bhx4mNcYrJsYxcPOROWrGql-gX8qd8Iqx3jOzELUtyM5iGitWFkqoIQqjhGjO2j8jbHPUY5vect4Ap8tKSo0quBRubWZf_p83qPM4Y9G6eJpbyhOe90PpvTJkCW6PGDOh67o_8YNBBW_JTxd8z-HDWp2_dOQuKVPpxd8yckaIh6FxbVR8IjSx118jbkkjHE5abyHuGHHg52TzNFaX48PerD9SCdiwlGwriCziBqEJ0egnwEoPoqFwLq9aUOKHFSuKZ8uUC-GKIO2Dj6GN7go87o51pXfB6enw7dsHkCAEWE-DiVd_4IcYYErzEr8sdWYjNIcQ31XGq8ULHvrl1mGzw'),
-                        new OA\Property(property: 'user', ref: new Model(type: User::class, groups: ['user:read']))
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: 'Invalid credentials',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'code', type: 'integer', example: 401),
-                        new OA\Property(property: 'message', type: 'string', example: 'Invalid credentials.')
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/LoginSuccess', response: 200),
+            new OA\Response(ref: '#/components/responses/InvalidCredentials', response: 401)
         ]
     )]
     public function login(Request $request): JsonResponse
@@ -165,25 +95,8 @@ final class AuthController extends AbstractController
         description: 'Return Authenticated User',
         security: [['Bearer' => []]],
         responses: [
-            new OA\Response(
-                response: 200,
-                description: 'User profile data',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'user', ref: new Model(type: User::class, groups: ['user:read']))
-                    ]
-                )
-            ),
-            new OA\Response(
-                response: 401,
-                description: 'User not authenticated',
-                content: new OA\JsonContent(
-                    properties: [
-                        new OA\Property(property: 'error', type: 'string', example: 'User not authenticated'),
-                        new OA\Property(property: 'code', type: 'string', example: 'NOT_AUTHENTICATED')
-                    ]
-                )
-            )
+            new OA\Response(ref: '#/components/responses/ProfileSuccess', response: 200),
+            new OA\Response(ref: '#/components/responses/Unauthorized', response: 401),
         ]
     )]
     public function profile(): JsonResponse
