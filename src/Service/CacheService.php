@@ -10,25 +10,29 @@ use Psr\Cache\InvalidArgumentException;
  */
 class CacheService
 {
-    private const CACHE_TTL_LIST = 300;
-    private const CACHE_TTL_DETAIL = 600;
-
     private const POST_LIST_KEY = 'post_list_page_%d_limit_%d';
     private const POST_DETAIL_KEY = 'post_detail_%d';
     private const COMMENT_LIST_KEY = 'comments_post_%d_page_%d_limit_%d';
     private const COMMENT_DETAIL_KEY = 'comment_detail_%d';
 
-    private const MAX_PAGES_TO_CLEAR = 10;
-    private const LIMIT_STEP = 10;
-    private const MAX_LIMIT = 100;
-
     /**
      * Constructor
      *
      * @param CacheItemPoolInterface $cache
+     * @param int $cacheTtlList
+     * @param int $cacheTtlDetail
+     * @param int $maxPagesToClear
+     * @param int $limitStep
+     * @param int $maxLimit
      */
-    public function __construct(private readonly CacheItemPoolInterface $cache)
-    {
+    public function __construct(
+        private readonly CacheItemPoolInterface $cache,
+        private readonly int $cacheTtlList,
+        private readonly int $cacheTtlDetail,
+        private readonly int $maxPagesToClear,
+        private readonly int $limitStep,
+        private readonly int $maxLimit
+    ) {
     }
 
     /**
@@ -36,7 +40,7 @@ class CacheService
      */
     public function getListCacheTime(): int
     {
-        return self::CACHE_TTL_LIST;
+        return $this->cacheTtlList;
     }
 
     /**
@@ -44,7 +48,7 @@ class CacheService
      */
     public function getItemCacheTime(): int
     {
-        return self::CACHE_TTL_DETAIL;
+        return $this->cacheTtlDetail;
     }
 
     /**
@@ -86,8 +90,8 @@ class CacheService
      */
     public function clearPostsListCache(): void
     {
-        for ($page = 1; $page <= self::MAX_PAGES_TO_CLEAR; $page++) {
-            for ($limit = self::LIMIT_STEP; $limit <= self::MAX_LIMIT; $limit += self::LIMIT_STEP) {
+        for ($page = 1; $page <= $this->maxPagesToClear; $page++) {
+            for ($limit = $this->limitStep; $limit <= $this->maxLimit; $limit += $this->limitStep) {
                 $key = $this->getPostsListCacheKey($page, $limit);
                 $this->cache->deleteItem($key);
             }
@@ -112,8 +116,8 @@ class CacheService
      */
     public function clearCommentsListCache(int $postId): void
     {
-        for ($page = 1; $page <= self::MAX_PAGES_TO_CLEAR; $page++) {
-            for ($limit = self::LIMIT_STEP; $limit <= self::MAX_LIMIT; $limit += self::LIMIT_STEP) {
+        for ($page = 1; $page <= $this->maxPagesToClear; $page++) {
+            for ($limit = $this->limitStep; $limit <= $this->maxLimit; $limit += $this->limitStep) {
                 $key = $this->getCommentsListCacheKey($postId, $page, $limit);
                 $this->cache->deleteItem($key);
             }
