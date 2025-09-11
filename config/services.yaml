@@ -1,0 +1,51 @@
+# This file is the entry point to configure your own services.
+# Files in the packages/ subdirectory configure your dependencies.
+
+# Put parameters here that don't need to change on each machine where the app is deployed
+# https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
+parameters:
+    # CacheService
+    app.cache.ttl_list: 300
+    app.cache.ttl_detail: 600
+    app.cache.max_pages_to_clear: 10
+    app.cache.limit_step: 10
+    app.cache.max_limit: 100
+
+services:
+    # default configuration for services in *this* file
+    _defaults:
+        autowire: true      # Automatically injects dependencies in your services.
+        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+
+    # makes classes in src/ available to be used as services
+    # this creates a service per class whose id is the fully-qualified class name
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+
+    # add more service definitions when explicit configuration is needed
+    # please note that last definitions always *replace* previous ones
+    App\Service\CacheService:
+      arguments:
+        $cache: '@cache.app'
+        $cacheTtlList: '%app.cache.ttl_list%'
+        $cacheTtlDetail: '%app.cache.ttl_detail%'
+        $maxPagesToClear: '%app.cache.max_pages_to_clear%'
+        $limitStep: '%app.cache.limit_step%'
+        $maxLimit: '%app.cache.max_limit%'
+
+    app.normalizer.object_normalizer:
+      class: Symfony\Component\Serializer\Normalizer\ObjectNormalizer
+      tags: ['serializer.normalizer']
+      arguments:
+#        $propertyInfoExtractor: null
+        $defaultContext:
+          circular_reference_handler: '@App\Serializer\CircularReferenceHandler'
+#          ignored_attributes: ['createdAt', 'updatedAt']
+          callbacks: {
+            'createdAt': '@App\Serializer\CreatedAtCallback',
+            'updatedAt': '@App\Serializer\UpdatedAtCallback'
+          }

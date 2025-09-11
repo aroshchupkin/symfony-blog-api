@@ -1,6 +1,7 @@
 version: '3.8'
 
 services:
+###> doctrine/doctrine-bundle ###
   webserver:
     image: nginx:alpine
     container_name: ${PROJECT_NAME}-webserver
@@ -8,21 +9,21 @@ services:
     networks:
       - internal
     volumes:
-      - ./../:/application
-      - ./sourcefiles/nginx:/etc/nginx/conf.d
+      - ./:/application
+      - ./docker/nginx:/etc/nginx/conf.d
     ports:
       - "${NGINX_PORT}:80"
 
   php-fpm:
-    build: sourcefiles/php-fpm
+    build: docker/php-fpm
     container_name: ${PROJECT_NAME}-php-fpm
 
     working_dir: /application
     environment:
       - PHP_WORKER_INSTALL_BCMATH=true
     volumes:
-      - ./../:/application
-      - ./sourcefiles/php-fpm/php-ini-overrides.ini:/usr/local/etc/php/conf.d/99-overrides.ini
+      - ./:/application
+      - ./docker/php-fpm/php-ini-overrides.ini:/usr/local/etc/php/conf.d/99-overrides.ini
     networks:
       - internal
 
@@ -32,20 +33,28 @@ services:
     env_file:
       - .env
     environment:
+      PGPASSWORD: '${DB_PASSWORD}'
       POSTGRES_DB: '${DB_DATABASE}'
       POSTGRES_USER: '${DB_USERNAME}'
+      # You should definitely change the password in production
       POSTGRES_PASSWORD: '${DB_PASSWORD}'
     volumes:
-      - ./sourcefiles/postgres:/tmp
+      - ./docker/postgres:/tmp
       - 'pg-data:/var/lib/postgresql/data'
+      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
+      # - ./docker/db/data:/var/lib/postgresql/data:rw
     ports:
       - '${DB_PORT}:5432'
     networks:
       - internal
+###< doctrine/doctrine-bundle ###
 
 volumes:
   pg-data:
     driver: local
+###> doctrine/doctrine-bundle ###
+#  database_data:
+###< doctrine/doctrine-bundle ###
 networks:
   internal:
     driver: bridge
