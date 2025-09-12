@@ -2,37 +2,40 @@
 
 namespace App\Service;
 
+use App\Contract\CommentServiceInterface;
+use App\Contract\CommentValidatorInterface;
+use App\Contract\SerializerServiceInterface;
 use App\Entity\Comment;
 use App\Entity\User;
 use App\Exception\CommentNotFoundException;
-use App\Exception\InvalidInputException;
 use App\Exception\PostNotFoundException;
-use App\Exception\ValidationException;
-use App\Exception\AccessDeniedException;
 use App\Repository\CommentRepository;
 use App\Repository\PostRepository;
 use Psr\Cache\InvalidArgumentException;
-use Symfony\Component\Serializer\SerializerInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Contracts\Cache\ItemInterface;
 
 /**
  * Comment Service
  */
-readonly class CommentService
+readonly class CommentService implements CommentServiceInterface
 {
     public function __construct(
-        private CommentRepository   $commentRepository,
-        private PostRepository      $postRepository,
-        private ValidatorInterface  $validator,
-        private SerializerInterface $serializer,
-        private CacheService        $cacheService
-    ) {
+        private CommentRepository          $commentRepository,
+        private PostRepository             $postRepository,
+        private CommentValidatorInterface  $commentValidator,
+        private SerializerServiceInterface $serializerService,
+        private CacheService               $cacheService
+    )
+    {
     }
 
     /**
      * Get comments for a specific post with pagination
      *
+     * @param int $postId
+     * @param int $page
+     * @param int $limit
+     * @return array
      * @throws PostNotFoundException
      * @throws InvalidArgumentException
      */
@@ -40,7 +43,7 @@ readonly class CommentService
     {
         $post = $this->postRepository->find($postId);
         if (!$post) {
-            throw new PostNotFoundException("Post with ID {$postId} not found");
+            throw new PostNotFoundException("Post with ID $postId not found");
         }
 
         $cacheKey = $this->cacheService->getCommentsListCacheKey($postId, $page, $limit);
@@ -69,6 +72,8 @@ readonly class CommentService
     /**
      * Get a single comment by ID
      *
+     * @param int $id
+     * @return Comment
      * @throws CommentNotFoundException
      * @throws InvalidArgumentException
      */
@@ -78,11 +83,12 @@ readonly class CommentService
 
         $comment = $this->cacheService->getCache()->get($cacheKey, function (ItemInterface $item) use ($id) {
             $item->expiresAfter($this->cacheService->getListCacheTime());
+
             return $this->commentRepository->find($id);
         });
 
         if (!$comment) {
-            throw new CommentNotFoundException("Comment with ID {$id} not found");
+            throw new CommentNotFoundException("Comment with ID $id not found");
         }
 
         return $comment;
@@ -91,31 +97,28 @@ readonly class CommentService
     /**
      * Create a new comment
      *
-     * @throws InvalidInputException
+     * @param array|null $data
+     * @param int $postId
+     * @param User $user
+     * @return Comment
      * @throws PostNotFoundException
-     * @throws ValidationException
      * @throws InvalidArgumentException
      */
-    public function createComment(array $data, int $postId, User $user): Comment
+    public function createComment(?array $data, int $postId, User $user): Comment
     {
-        if (!$data) {
-            throw new InvalidInputException('Invalid JSON body');
-        }
+        $this->commentValidator->validateCommentData($data);
 
         $post = $this->postRepository->find($postId);
         if (!$post) {
-            throw new PostNotFoundException("Post with ID {$postId} not found");
+            throw new PostNotFoundException("Post with ID $postId not found");
         }
 
         $comment = new Comment();
         $comment->setPost($post);
         $comment->setAuthor($user);
+        $comment->setContent(trim($data['content']));
 
-        if (isset($data['content'])) {
-            $comment->setContent(trim($data['content']));
-        }
-
-        $this->validateComment($comment);
+        $this->commentValidator->validateComment($comment);
 
         $this->commentRepository->save($comment, true);
         $this->clearCommentCaches($postId, $comment->getId());
@@ -126,27 +129,21 @@ readonly class CommentService
     /**
      * Update an existing comment
      *
+     * @param int $id
+     * @param array|null $data
+     * @param User $user
+     * @return Comment
      * @throws CommentNotFoundException
-     * @throws AccessDeniedException
-     * @throws InvalidInputException
-     * @throws ValidationException
      * @throws InvalidArgumentException
      */
-    public function updateComment(int $id, array $data, User $user): Comment
+    public function updateComment(int $id, ?array $data, User $user): Comment
     {
-        if (!$data) {
-            throw new InvalidInputException('Invalid JSON body');
-        }
-
+        $this->commentValidator->validateCommentData($data);
         $comment = $this->getCommentById($id);
+        $this->commentValidator->checkCommentOwnership($comment, $user);
 
-        $this->checkCommentOwnership($comment, $user);
-
-        if (isset($data['content'])) {
-            $comment->setContent(trim($data['content']));
-        }
-
-        $this->validateComment($comment);
+        $comment->setContent(trim($data['content']));
+        $this->commentValidator->validateComment($comment);
 
         $this->commentRepository->save($comment, true);
         $this->clearCommentCaches($comment->getPost()->getId(), $comment->getId());
@@ -157,15 +154,17 @@ readonly class CommentService
     /**
      * Delete a comment
      *
+     * @param int $id
+     * @param User $user
+     * @return void
      * @throws CommentNotFoundException
-     * @throws AccessDeniedException
      * @throws InvalidArgumentException
      */
     public function deleteComment(int $id, User $user): void
     {
         $comment = $this->getCommentById($id);
 
-        $this->checkCommentOwnership($comment, $user);
+        $this->commentValidator->checkCommentOwnership($comment, $user);
 
         $postId = $comment->getPost()->getId();
 
@@ -175,42 +174,13 @@ readonly class CommentService
 
     /**
      * Serialize comment data
+     *
+     * @param Comment $comment
+     * @return array
      */
     public function serializeComment(Comment $comment): array
     {
-        $serializedData = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:read']]);
-        return json_decode($serializedData, true);
-    }
-
-    /**
-     * Validate comment entity
-     *
-     * @throws ValidationException
-     */
-    private function validateComment(Comment $comment): void
-    {
-        $errors = $this->validator->validate($comment);
-
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            }
-
-            throw new ValidationException('Validation failed', $errorMessages);
-        }
-    }
-
-    /**
-     * Check if user owns the comment
-     *
-     * @throws AccessDeniedException
-     */
-    private function checkCommentOwnership(Comment $comment, User $user): void
-    {
-        if ($comment->getAuthor() !== $user) {
-            throw new AccessDeniedException('Access denied. You can only modify your own comments');
-        }
+        return $this->serializerService->serializeComment($comment);
     }
 
     /**
@@ -226,7 +196,6 @@ readonly class CommentService
             $this->cacheService->clearCommentDetailCache($commentId);
         }
 
-        // Also clear post detail cache since it includes comments
         $this->cacheService->clearPostDetailCache($postId);
     }
 }
