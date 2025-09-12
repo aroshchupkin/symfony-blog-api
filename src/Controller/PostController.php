@@ -2,12 +2,12 @@
 
 namespace App\Controller;
 
+use App\Contract\PostServiceInterface;
 use App\Entity\User;
 use App\Exception\AccessDeniedException;
 use App\Exception\InvalidInputException;
 use App\Exception\PostNotFoundException;
 use App\Exception\ValidationException;
-use App\Service\PostService;
 use OpenApi\Attributes as OA;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,8 +25,8 @@ use Symfony\Component\Serializer\SerializerInterface;
 final class PostController extends AbstractController
 {
     public function __construct(
-        private readonly PostService         $postService,
-        private readonly SerializerInterface $serializer,
+        private readonly PostServiceInterface $postService,
+        private readonly SerializerInterface  $serializer,
     )
     {
     }

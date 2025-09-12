@@ -2,13 +2,13 @@
 
 namespace App\Controller;
 
+use App\Contract\CommentServiceInterface;
 use App\Entity\User;
 use App\Exception\AccessDeniedException;
 use App\Exception\CommentNotFoundException;
 use App\Exception\InvalidInputException;
 use App\Exception\PostNotFoundException;
 use App\Exception\ValidationException;
-use App\Service\CommentService;
 use OpenApi\Attributes as OA;
 use Psr\Cache\InvalidArgumentException;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -26,9 +26,10 @@ use Symfony\Component\Serializer\SerializerInterface;
 final class CommentController extends AbstractController
 {
     public function __construct(
-        private readonly CommentService $commentService,
-        private readonly SerializerInterface $serializer
-    ) {
+        private readonly CommentServiceInterface $commentService,
+        private readonly SerializerInterface     $serializer
+    )
+    {
     }
 
     #[Route('', name: 'comments_index', requirements: ['postId' => '\d+'], methods: ['GET'])]

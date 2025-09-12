@@ -2,11 +2,11 @@
 
 namespace App\Controller;
 
+use App\Contract\UserServiceInterface;
 use App\Entity\User;
 use App\Exception\EmailAlreadyExistsException;
 use App\Exception\InvalidInputException;
 use App\Exception\ValidationException;
-use App\Service\UserService;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,7 +22,7 @@ use Symfony\Component\Routing\Attribute\Route;
 final class AuthController extends AbstractController
 {
     public function __construct(
-        private readonly UserService $userService,
+        private readonly UserServiceInterface $userService,
     )
     {
     }

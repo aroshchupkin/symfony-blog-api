@@ -2,13 +2,14 @@
 
 namespace App\Service;
 
+use App\Contract\CacheServiceInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 
 /**
  * Cache Service
  */
-class CacheService
+readonly class CacheService implements CacheServiceInterface
 {
     private const POST_LIST_KEY = 'post_list_page_%d_limit_%d';
     private const POST_DETAIL_KEY = 'post_detail_%d';
@@ -37,6 +38,8 @@ class CacheService
 
     /**
      * Get cache TTL for list operations
+     *
+     * @return int
      */
     public function getListCacheTime(): int
     {
@@ -45,6 +48,8 @@ class CacheService
 
     /**
      * Get cache TTL for detail operations
+     *
+     * @return int
      */
     public function getItemCacheTime(): int
     {
@@ -53,6 +58,10 @@ class CacheService
 
     /**
      * Generate cache key for posts list
+     *
+     * @param int $page
+     * @param int $limit
+     * @return string
      */
     public function getPostsListCacheKey(int $page, int $limit): string
     {
@@ -61,6 +70,9 @@ class CacheService
 
     /**
      * Generate cache key for post detail
+     *
+     * @param int $postId
+     * @return string
      */
     public function getPostDetailCacheKey(int $postId): string
     {
@@ -69,6 +81,11 @@ class CacheService
 
     /**
      * Generate cache key for comments list
+     *
+     * @param int $postId
+     * @param int $page
+     * @param int $limit
+     * @return string
      */
     public function getCommentsListCacheKey(int $postId, int $page, int $limit): string
     {
@@ -77,6 +94,9 @@ class CacheService
 
     /**
      * Generate cache key for comment detail
+     *
+     * @param int $commentId
+     * @return string
      */
     public function getCommentDetailCacheKey(int $commentId): string
     {
@@ -86,6 +106,7 @@ class CacheService
     /**
      * Clear all posts list cache entries
      *
+     * @return void
      * @throws InvalidArgumentException
      */
     public function clearPostsListCache(): void
@@ -101,6 +122,8 @@ class CacheService
     /**
      * Clear specific post detail cache
      *
+     * @param int $postId
+     * @return void
      * @throws InvalidArgumentException
      */
     public function clearPostDetailCache(int $postId): void
@@ -112,6 +135,8 @@ class CacheService
     /**
      * Clear all comments list cache for a specific post
      *
+     * @param int $postId
+     * @return void
      * @throws InvalidArgumentException
      */
     public function clearCommentsListCache(int $postId): void
@@ -127,6 +152,8 @@ class CacheService
     /**
      * Clear specific comment detail cache
      *
+     * @param int $commentId
+     * @return void
      * @throws InvalidArgumentException
      */
     public function clearCommentDetailCache(int $commentId): void
@@ -160,6 +187,8 @@ class CacheService
 
     /**
      * Get the cache pool instance
+     *
+     * @return CacheItemPoolInterface
      */
     public function getCache(): CacheItemPoolInterface
     {

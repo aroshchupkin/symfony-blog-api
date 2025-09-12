@@ -2,15 +2,18 @@
 
 namespace App\Exception;
 
-use Exception;
-
-class CommentException extends \Exception
+/**
+ * Comment Exception
+ */
+class CommentException extends BaseException
 {
-    public function __construct(
-        string $message = "Comment error occurred",
-        int $code = 0,
-        ?Exception $previous = null
-    ) {
-        parent::__construct($message, $code, $previous);
+    public function getType(): string
+    {
+        return 'COMMENT_ERROR';
+    }
+
+    public function getHttpStatusCode(): int
+    {
+        return 400;
     }
 }

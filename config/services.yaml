@@ -28,6 +28,18 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+    # Service
+    App\Contract\UserServiceInterface: '@App\Service\UserService'
+    App\Contract\PostServiceInterface: '@App\Service\PostService'
+    App\Contract\CommentServiceInterface: '@App\Service\CommentService'
+    App\Contract\CacheServiceInterface: '@App\Service\CacheService'
+    # Validator
+    App\Contract\UserValidatorInterface: '@App\Service\UserValidator'
+    App\Contract\PostValidatorInterface: '@App\Service\PostValidator'
+    App\Contract\CommentValidatorInterface: '@App\Service\CommentValidator'
+    # Serializer
+    App\Contract\SerializerServiceInterface: '@App\Service\SerializerService'
+    # CacheService
     App\Service\CacheService:
       arguments:
         $cache: '@cache.app'
