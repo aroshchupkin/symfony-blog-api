@@ -2,7 +2,10 @@
 
 namespace App\Exception;
 
-class ValidationException extends UserException
+/**
+ * Validation Exception
+ */
+class ValidationException extends BaseException
 {
     public function __construct(
         string $message = '',
@@ -14,5 +17,15 @@ class ValidationException extends UserException
     public function getValidationErrors(): array
     {
         return $this->validationErrors;
+    }
+
+    public function getType(): string
+    {
+        return 'VALIDATION_ERROR';
+    }
+
+    public function getHttpStatusCode(): int
+    {
+        return 400;
     }
 }
