@@ -55,9 +55,9 @@ services:
       arguments:
 #        $propertyInfoExtractor: null
         $defaultContext:
-          circular_reference_handler: '@App\Serializer\CircularReferenceHandler'
+          circular_reference_handler: '@App\Component\Serializer\CircularReferenceHandler'
 #          ignored_attributes: ['createdAt', 'updatedAt']
           callbacks: {
-            'createdAt': '@App\Serializer\CreatedAtCallback',
-            'updatedAt': '@App\Serializer\UpdatedAtCallback'
+            'createdAt': '@App\Component\Serializer\CreatedAtCallback',
+            'updatedAt': '@App\Component\Serializer\UpdatedAtCallback'
           }
