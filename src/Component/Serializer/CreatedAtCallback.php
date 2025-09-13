@@ -2,13 +2,19 @@
 
 declare(strict_types=1);
 
-namespace App\Serializer;
+namespace App\Component\Serializer;
 
 use DateTimeInterface;
 
+/**
+ * Create At Callback for Symfony Serializer
+ */
 class CreatedAtCallback
 {
-//    public function __invoke(null|string|DateTimeInterface $innerObject): DateTimeInterface|string|null
+    /**
+     * @param string|DateTimeInterface|null $innerObject
+     * @return DateTimeInterface|string|null
+     */
     public function __invoke(null|string|DateTimeInterface $innerObject): DateTimeInterface|string|null
     {
         if ($innerObject === null) {
