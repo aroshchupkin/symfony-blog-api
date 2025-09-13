@@ -23,18 +23,39 @@ readonly class SerializerService implements SerializerServiceInterface
     ) {
     }
 
+    /**
+     * Serialize User entity to array
+     *
+     * @param User $user
+     * @param array $groups
+     * @return array
+     */
     public function serializeUser(User $user, array $groups = ['user:read']): array
     {
         $userData = $this->serializer->serialize($user, 'json', ['groups' => $groups]);
         return json_decode($userData, true);
     }
 
+    /**
+     * Serialize Post entity to array
+     *
+     * @param Post $post
+     * @param array $groups
+     * @return array
+     */
     public function serializePost(Post $post, array $groups = ['post:read']): array
     {
         $postData = $this->serializer->serialize($post, 'json', ['groups' => $groups]);
         return json_decode($postData, true);
     }
 
+    /**
+     * Serialize Comment entity to array
+     *
+     * @param Comment $comment
+     * @param array $groups
+     * @return array
+     */
     public function serializeComment(Comment $comment, array $groups = ['comment:read']): array
     {
         $commentData = $this->serializer->serialize($comment, 'json', ['groups' => $groups]);
