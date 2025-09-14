@@ -375,8 +375,8 @@ nelmio_api_doc:
           required: false
           schema:
             type: integer
-            default: 1
-            minimum: 1
+            default: '%app.pagination.default_page%'
+            minimum: '%app.pagination.min_limit%'
 
         LimitParameter:
           name: limit
@@ -385,9 +385,9 @@ nelmio_api_doc:
           required: false
           schema:
             type: integer
-            default: 10
-            minimum: 1
-            maximum: 100
+            default: '%app.pagination.default_limit%'
+            minimum: '%app.pagination.min_limit%'
+            maximum: '%app.pagination.max_limit%'
 
         PostIdParameter:
           name: id
@@ -428,7 +428,7 @@ nelmio_api_doc:
               example: 50
             itemsPerPage:
               type: integer
-              example: 10
+              example: '%app.pagination.default_limit%'
 
     security:
       - Bearer: [ ]

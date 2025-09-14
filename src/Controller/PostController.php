@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Contract\PaginationServiceInterface;
 use App\Contract\PostServiceInterface;
 use App\Entity\User;
 use App\Exception\AccessDeniedException;
@@ -27,6 +28,7 @@ final class PostController extends AbstractController
     public function __construct(
         private readonly PostServiceInterface $postService,
         private readonly SerializerInterface  $serializer,
+        private readonly PaginationServiceInterface $paginationService
     )
     {
     }
@@ -45,8 +47,7 @@ final class PostController extends AbstractController
     )]
     public function index(Request $request): JsonResponse
     {
-        $page = max(1, (int)$request->query->get('page', 1));
-        $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
+        ['page' => $page, 'limit' => $limit] = $this->paginationService->validatePagination($request);
 
         try {
             $result = $this->postService->getPostsWithPagination($page, $limit);
