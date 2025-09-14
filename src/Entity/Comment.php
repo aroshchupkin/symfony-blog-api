@@ -92,9 +92,10 @@ class Comment
     }
 
     /**
-     * Get author name
+     * Get author username
      */
-    public function getAuthorName(): ?string
+    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    public function getAuthorUsername(): ?string
     {
         return $this->author?->getUsername();
     }
@@ -184,15 +185,6 @@ class Comment
     public function getAuthor(): ?User
     {
         return $this->author;
-    }
-
-    /**
-     * Get author username
-     */
-    #[Groups(['comment:read', 'comment:list', 'post:read'])]
-    public function getAuthorUsername(): ?string
-    {
-        return $this->author?->getUsername();
     }
 
     /**

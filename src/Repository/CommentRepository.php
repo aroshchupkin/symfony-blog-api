@@ -32,7 +32,7 @@ class CommentRepository extends ServiceEntityRepository
      * @param int $limit
      * @return Comment[]
      */
-    public function findByPostWithPagination(Post $post, int $page = 1, int $limit = 10): array
+    public function findByPostWithPagination(Post $post, int $page = 1, int $limit = 5): array
     {
         return $this->createQueryBuilder('comment')
             ->andWhere('comment.post = :post')

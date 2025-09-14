@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Contract\CommentServiceInterface;
+use App\Contract\PaginationServiceInterface;
 use App\Entity\User;
 use App\Exception\AccessDeniedException;
 use App\Exception\CommentNotFoundException;
@@ -27,7 +28,8 @@ final class CommentController extends AbstractController
 {
     public function __construct(
         private readonly CommentServiceInterface $commentService,
-        private readonly SerializerInterface     $serializer
+        private readonly SerializerInterface     $serializer,
+        private readonly PaginationServiceInterface $paginationService
     )
     {
     }
@@ -48,8 +50,7 @@ final class CommentController extends AbstractController
     )]
     public function index(int $postId, Request $request): JsonResponse
     {
-        $page = max(1, (int)$request->query->get('page', 1));
-        $limit = min(100, max(1, (int)$request->query->get('limit', 10)));
+        ['page' => $page, 'limit' => $limit] = $this->paginationService->validatePagination($request);
 
         try {
             $result = $this->commentService->getCommentsForPost($postId, $page, $limit);
