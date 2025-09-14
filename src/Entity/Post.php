@@ -226,7 +226,7 @@ class Post
     /**
      * Get number of comments on this post
      */
-    #[Groups(['post:list'])]
+    #[Groups(['post:list', 'post:read'])]
     public function getCommentsCount(): int
     {
         return $this->comments->count();
@@ -257,6 +257,14 @@ class Post
         $this->author = $author;
 
         return $this;
+    }
+
+    /**
+     * Get author email
+     */
+    public function getAuthorEmail(): ?string
+    {
+        return $this->author?->getEmail();
     }
 
     /**

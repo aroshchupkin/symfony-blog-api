@@ -7,9 +7,15 @@ parameters:
     # CacheService
     app.cache.ttl_list: 300
     app.cache.ttl_detail: 600
-    app.cache.max_pages_to_clear: 10
-    app.cache.limit_step: 10
+    app.cache.max_pages_to_clear: 5
+    app.cache.limit_step: 5
     app.cache.max_limit: 100
+
+    # Pagination
+    app.pagination.default_page: 1
+    app.pagination.default_limit: 5
+    app.pagination.min_limit: 1
+    app.pagination.max_limit: 100
 
 services:
     # default configuration for services in *this* file
@@ -33,12 +39,18 @@ services:
     App\Contract\PostServiceInterface: '@App\Service\PostService'
     App\Contract\CommentServiceInterface: '@App\Service\CommentService'
     App\Contract\CacheServiceInterface: '@App\Service\CacheService'
+
     # Validator
     App\Contract\UserValidatorInterface: '@App\Service\UserValidator'
     App\Contract\PostValidatorInterface: '@App\Service\PostValidator'
     App\Contract\CommentValidatorInterface: '@App\Service\CommentValidator'
+
     # Serializer
     App\Contract\SerializerServiceInterface: '@App\Service\SerializerService'
+
+    # Pagination
+    App\Contract\PaginationServiceInterface: '@App\Service\PaginationService'
+
     # CacheService
     App\Service\CacheService:
       arguments:
@@ -48,6 +60,14 @@ services:
         $maxPagesToClear: '%app.cache.max_pages_to_clear%'
         $limitStep: '%app.cache.limit_step%'
         $maxLimit: '%app.cache.max_limit%'
+
+    # PaginationService
+    App\Service\PaginationService:
+      arguments:
+        $defaultPage: '%app.pagination.default_page%'
+        $defaultLimit: '%app.pagination.default_limit%'
+        $minLimit: '%app.pagination.min_limit%'
+        $maxLimit: '%app.pagination.max_limit%'
 
     app.normalizer.object_normalizer:
       class: Symfony\Component\Serializer\Normalizer\ObjectNormalizer

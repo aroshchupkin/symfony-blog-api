@@ -24,13 +24,13 @@ class PostRepository extends ServiceEntityRepository
     }
 
     /**
-     * Find posts with pagination and eager loading of comments
+     * Find posts with pagination
      *
      * @param int $page
      * @param int $limit
      * @return Post[]
      */
-    public function findAllWithPagination(int $page = 1, int $limit = 10): array
+    public function findAllWithPagination(int $page = 1, int $limit = 5): array
     {
         $query = $this->createQueryBuilder('post')
             ->leftJoin('post.comments', 'comments')
