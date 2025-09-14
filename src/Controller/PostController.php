@@ -58,7 +58,7 @@ final class PostController extends AbstractController
             return new JsonResponse([
                 'error' => $e->getMessage(),
                 'code' => 'INVALID_ARGUMENT'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -91,7 +91,7 @@ final class PostController extends AbstractController
             return new JsonResponse([
                 'error' => $e->getMessage(),
                 'code' => 'INVALID_ARGUMENT'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -142,7 +142,7 @@ final class PostController extends AbstractController
             return new JsonResponse([
                 'error' => $e->getMessage(),
                 'code' => 'INVALID_ARGUMENT'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -210,7 +210,7 @@ final class PostController extends AbstractController
             return new JsonResponse([
                 'error' => $e->getMessage(),
                 'code' => 'INVALID_ARGUMENT'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 
@@ -263,7 +263,7 @@ final class PostController extends AbstractController
             return new JsonResponse([
                 'error' => $e->getMessage(),
                 'code' => 'INVALID_ARGUMENT'
-            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+            ], Response::HTTP_BAD_REQUEST);
         }
     }
 }
