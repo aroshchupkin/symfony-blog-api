@@ -25,7 +25,7 @@ class Post
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['post:read', 'post:list'])]
+    #[Groups(['post:detail', 'post:list'])]
     private ?int $id = null;
 
     /**
@@ -38,7 +38,7 @@ class Post
         max: 255,
         minMessage: 'Title must be at least 3 characters long',
         maxMessage: 'Title cannot be longer than 255 characters')]
-    #[Groups(['post:read', 'post:list', 'post:write'])]
+    #[Groups(['post:detail', 'post:list'])]
     private ?string $title = null;
 
     /**
@@ -47,21 +47,21 @@ class Post
     #[ORM\Column(type: Types::TEXT)]
     #[Assert\NotBlank(message: 'Content cannot be blank.')]
     #[Assert\Length(min: 10, minMessage: 'Content must be at least 10 characters long')]
-    #[Groups(['post:read', 'post:write'])]
+    #[Groups(['post:detail'])]
     private ?string $content = null;
 
     /**
      * Timestamp when post was created
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    #[Groups(['post:read', 'post:list'])]
+    #[Groups(['post:detail', 'post:list'])]
     private ?\DateTimeInterface $createdAt = null;
 
     /**
      * Timestamp when post was last updated
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    #[Groups(['post:read', 'post:list'])]
+    #[Groups(['post:detail', 'post:list'])]
     private ?\DateTimeInterface $updatedAt = null;
 
     /**
@@ -77,7 +77,7 @@ class Post
      * @var Collection<int, Comment>
      */
     #[ORM\OneToMany(targetEntity: Comment::class, mappedBy: 'post', orphanRemoval: true)]
-    #[Groups(['post:read'])]
+    #[Groups(['post:detail'])]
     private Collection $comments;
 
     /**
@@ -226,7 +226,7 @@ class Post
     /**
      * Get number of comments on this post
      */
-    #[Groups(['post:list', 'post:read'])]
+    #[Groups(['post:detail', 'post:list'])]
     public function getCommentsCount(): int
     {
         return $this->comments->count();
@@ -243,7 +243,7 @@ class Post
     /**
      * Get author username
      */
-    #[Groups(['post:read', 'post:list'])]
+    #[Groups(['post:detail', 'post:list'])]
     public function getAuthorUsername(): ?string
     {
         return $this->author?->getUsername();

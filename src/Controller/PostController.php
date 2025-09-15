@@ -78,7 +78,7 @@ final class PostController extends AbstractController
     {
         try {
             $post = $this->postService->getPostById($id);
-            $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:read']]);
+            $data = $this->serializer->serialize($post, 'json', ['groups' => ['post:detail']]);
 
             return new JsonResponse($data, Response::HTTP_OK, [], true);
         } catch (PostNotFoundException $e) {

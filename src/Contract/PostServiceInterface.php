@@ -81,5 +81,5 @@ interface PostServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializePost(Post $post, array $groups = ['post:read']): array;
+    public function serializePost(Post $post, array $groups = ['post:detail']): array;
 }

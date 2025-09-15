@@ -51,6 +51,7 @@ services:
       - '${DB_PORT}:5432'
     networks:
       - internal
+
 ###< doctrine/doctrine-bundle ###
 
 volumes:

@@ -30,7 +30,7 @@ readonly class SerializerService implements SerializerServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializeUser(User $user, array $groups = ['user:read']): array
+    public function serializeUser(User $user, array $groups = ['user:detail']): array
     {
         $userData = $this->serializer->serialize($user, 'json', ['groups' => $groups]);
         return json_decode($userData, true);
@@ -43,7 +43,7 @@ readonly class SerializerService implements SerializerServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializePost(Post $post, array $groups = ['post:read']): array
+    public function serializePost(Post $post, array $groups = ['post:detail']): array
     {
         $postData = $this->serializer->serialize($post, 'json', ['groups' => $groups]);
         return json_decode($postData, true);
@@ -56,7 +56,7 @@ readonly class SerializerService implements SerializerServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializeComment(Comment $comment, array $groups = ['comment:read']): array
+    public function serializeComment(Comment $comment, array $groups = ['comment:detail']): array
     {
         $commentData = $this->serializer->serialize($comment, 'json', ['groups' => $groups]);
         return json_decode($commentData, true);
