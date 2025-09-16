@@ -31,7 +31,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['user:read'])]
+    #[Groups(['user:detail'])]
     private ?int $id = null;
 
     /**
@@ -49,7 +49,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         pattern: '/^[a-zA-Z0-9_]+$/',
         message: 'Username can only contain letters, numbers, and underscores.'
     )]
-    #[Groups(['user:read', 'user:write', 'post:read', 'comment:read', 'comment:list'])]
+    #[Groups(['user:detail', 'post:detail', 'comment:detail', 'comment:list'])]
     private ?string $username = null;
 
     /**
@@ -59,7 +59,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[Assert\NotBlank(message: 'Email cannot be blank.')]
     #[Assert\Email(message: 'Please enter a valid email address.')]
     #[Assert\Length(max: 180, maxMessage: "Email cannot be longer than 180 characters.")]
-    #[Groups(['user:read', 'user:write'])]
+    #[Groups(['user:detail'])]
     private ?string $email = null;
 
     /**
@@ -76,15 +76,14 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         min: 6,
         minMessage: "Password must be at least 6 characters long."
     )]
-    #[Groups(['user:write'])]
     private ?string $plainPassword = null;
 
     /**
      * Timestamp when user account was created
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    #[Groups(['user:read'])]
-    private ?\DateTimeImmutable $createdAt = null;
+    #[Groups(['user:detail'])]
+    private ?\DateTimeInterface $createdAt = null;
 
     /**
      * User roles for authorization
@@ -205,7 +204,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * Get creation timestamp
      */
-    public function getCreatedAt(): ?\DateTimeImmutable
+    public function getCreatedAt(): ?\DateTimeInterface
     {
         return $this->createdAt;
     }
@@ -213,7 +212,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     /**
      * Set creation timestamp
      */
-    public function setCreatedAt(\DateTimeImmutable $createdAt): static
+    public function setCreatedAt(\DateTimeInterface $createdAt): static
     {
         $this->createdAt = $createdAt;
 

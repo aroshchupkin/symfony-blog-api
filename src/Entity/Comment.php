@@ -23,7 +23,7 @@ class Comment
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
-    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
     private ?int $id = null;
 
     /**
@@ -32,21 +32,21 @@ class Comment
     #[ORM\Column(type: Types::TEXT)]
     #[Assert\NotBlank(message: 'Content cannot be blank')]
     #[Assert\Length(min: 5, minMessage: 'Content must be at least 5 characters')]
-    #[Groups(['comment:read', 'comment:list', 'comment:write', 'post:read'])]
+    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
     private ?string $content = null;
 
     /**
      * Timestamp when comment was created
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
-    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
     private ?\DateTimeInterface  $createdAt = null;
 
     /**
      * Timestamp when comment was last updated
      */
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
     private ?\DateTimeInterface  $updatedAt = null;
 
     /**
@@ -94,7 +94,7 @@ class Comment
     /**
      * Get author username
      */
-    #[Groups(['comment:read', 'comment:list', 'post:read'])]
+    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
     public function getAuthorUsername(): ?string
     {
         return $this->author?->getUsername();

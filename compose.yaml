@@ -1,7 +1,6 @@
 version: '3.8'
 
 services:
-###> doctrine/doctrine-bundle ###
   webserver:
     image: nginx:alpine
     container_name: ${PROJECT_NAME}-webserver
@@ -16,6 +15,12 @@ services:
       - "${NGINX_PORT}:80"
     depends_on:
       - php-fpm
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   php-fpm:
     build: docker/php-fpm
@@ -29,6 +34,12 @@ services:
       - ./docker/php-fpm/php-ini-overrides.ini:/usr/local/etc/php/conf.d/99-overrides.ini
     networks:
       - internal
+    healthcheck:
+      test: [ "CMD-SHELL", "php-fpm -t" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   database:
     image: postgres:13-alpine
@@ -40,25 +51,47 @@ services:
       PGPASSWORD: '${DB_PASSWORD}'
       POSTGRES_DB: '${DB_DATABASE}'
       POSTGRES_USER: '${DB_USERNAME}'
-      # You should definitely change the password in production
       POSTGRES_PASSWORD: '${DB_PASSWORD}'
     volumes:
       - ./docker/postgres:/tmp
       - 'pg-data:/var/lib/postgresql/data'
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
       # - ./docker/db/data:/var/lib/postgresql/data:rw
     ports:
       - '${DB_PORT}:5432'
     networks:
       - internal
-###< doctrine/doctrine-bundle ###
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_DATABASE}" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: ${PROJECT_NAME}-redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis-data:/data
+      - ./docker/redis/redis.conf:/etc/redis/redis.conf
+    command: ["redis-server", "/etc/redis/redis.conf"]
+    networks:
+      - internal
+    healthcheck:
+      test: [ "CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 volumes:
   pg-data:
     driver: local
-###> doctrine/doctrine-bundle ###
-#  database_data:
-###< doctrine/doctrine-bundle ###
+  redis-data:
+    driver: local
+
 networks:
   internal:
     driver: bridge
