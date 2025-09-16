@@ -22,3 +22,6 @@ RUN apt-get update && \
 apt-get install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev && \
 docker-php-ext-configure gd --with-freetype=/usr/include/ --with-jpeg=/usr/include/ && \
 docker-php-ext-install gd
+
+# Install Redis extension
+RUN pecl install redis && docker-php-ext-enable redis
