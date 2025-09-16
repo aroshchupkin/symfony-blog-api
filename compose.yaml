@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   webserver:
-    image: nginx:alpine
+    build: docker/nginx
     container_name: ${PROJECT_NAME}-webserver
     working_dir: /application
     restart: unless-stopped
@@ -16,7 +16,7 @@ services:
     depends_on:
       - php-fpm
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/" ]
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health" ]
       interval: 30s
       timeout: 10s
       retries: 3
