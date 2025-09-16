@@ -18,7 +18,7 @@ interface SerializerServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializeUser(User $user, array $groups = ['user:read']): array;
+    public function serializeUser(User $user, array $groups = ['user:detail']): array;
 
     /**
      * Serialize post data for response
@@ -27,7 +27,7 @@ interface SerializerServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializePost(Post $post, array $groups = ['post:read']): array;
+    public function serializePost(Post $post, array $groups = ['post:detail']): array;
 
     /**
      * Serialize comment data for response
@@ -36,5 +36,5 @@ interface SerializerServiceInterface
      * @param array $groups
      * @return array
      */
-    public function serializeComment(Comment $comment, array $groups = ['comment:read']): array;
+    public function serializeComment(Comment $comment, array $groups = ['comment:detail']): array;
 }
