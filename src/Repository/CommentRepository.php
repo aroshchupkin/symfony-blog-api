@@ -15,7 +15,7 @@ use Doctrine\Persistence\ManagerRegistry;
 class CommentRepository extends ServiceEntityRepository
 {
     /**
-     * Comment Repository
+     * Constructor
      *
      * @param ManagerRegistry $registry
      */

@@ -92,23 +92,6 @@ class Comment
     }
 
     /**
-     * Get author username
-     */
-    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
-    public function getAuthorUsername(): ?string
-    {
-        return $this->author?->getUsername();
-    }
-
-    /**
-     * Get author email
-     */
-    public function getAuthorEmail(): ?string
-    {
-        return $this->author?->getEmail();
-    }
-
-    /**
      * Get creation timestamp
      */
     public function getCreatedAt(): ?\DateTimeInterface
@@ -162,6 +145,23 @@ class Comment
     }
 
     /**
+     * Get author username
+     */
+    #[Groups(['comment:detail', 'comment:list', 'post:detail'])]
+    public function getAuthorUsername(): ?string
+    {
+        return $this->author?->getUsername();
+    }
+
+    /**
+     * Get author email
+     */
+    public function getAuthorEmail(): ?string
+    {
+        return $this->author?->getEmail();
+    }
+
+    /**
      * Get the post this comment belongs to
      */
     public function getPost(): ?Post
@@ -195,5 +195,13 @@ class Comment
         $this->author = $author;
 
         return $this;
+    }
+
+    /**
+     * String representation of comment
+     */
+    public function __toString(): string
+    {
+        return $this->username ?? 'New Comment';
     }
 }

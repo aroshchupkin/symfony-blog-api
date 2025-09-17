@@ -26,6 +26,16 @@ readonly class CommentValidator implements CommentValidatorInterface
     }
 
     /**
+     * @throws AccessDeniedException
+     */
+    public function checkCommentOwnership(Comment $comment, User $user): void
+    {
+        if ($comment->getAuthor() !== $user) {
+            throw new AccessDeniedException('Access denied. You can only modify your own comments');
+        }
+    }
+
+    /**
      * @throws InvalidInputException
      */
     public function validateCommentData(?array $data): void
@@ -53,16 +63,6 @@ readonly class CommentValidator implements CommentValidatorInterface
             }
 
             throw new ValidationException('Validation failed', $errorMessages);
-        }
-    }
-
-    /**
-     * @throws AccessDeniedException
-     */
-    public function checkCommentOwnership(Comment $comment, User $user): void
-    {
-        if ($comment->getAuthor() !== $user) {
-            throw new AccessDeniedException('Access denied. You can only modify your own comments');
         }
     }
 }
