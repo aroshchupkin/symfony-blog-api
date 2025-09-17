@@ -202,6 +202,6 @@ class Comment
      */
     public function __toString(): string
     {
-        return $this->username ?? 'New Comment';
+        return $this->content ?? 'New Comment';
     }
 }
