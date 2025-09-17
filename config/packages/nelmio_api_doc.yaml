@@ -438,8 +438,8 @@ nelmio_api_doc:
       - ^/api(?!/doc$) # Accepts routes under /api except /api/doc
   models:
     names:
-      - { alias: User, type: App\Entity\User, groups: [ user:read ] }
-      - { alias: Post, type: App\Entity\Post, groups: [ post:read ] }
+      - { alias: User, type: App\Entity\User, groups: [ user:detail ] }
+      - { alias: Post, type: App\Entity\Post, groups: [ post:detail ] }
       - { alias: PostList, type: App\Entity\Post, groups: [ post:list ] }
-      - { alias: Comment, type: App\Entity\Comment, groups: [ comment:read ] }
+      - { alias: Comment, type: App\Entity\Comment, groups: [ comment:detail ] }
       - { alias: CommentList, type: App\Entity\Comment, groups: [ comment:list ] }

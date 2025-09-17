@@ -42,27 +42,6 @@ readonly class PostValidator implements PostValidatorInterface
     }
 
     /**
-     * Validate post entity
-     *
-     * @param Post $post
-     * @return void
-     * @throws ValidationException
-     */
-    public function validatePost(Post $post): void
-    {
-        $errors = $this->validator->validate($post);
-
-        if (count($errors) > 0) {
-            $errorMessages = [];
-            foreach ($errors as $error) {
-                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
-            }
-
-            throw new ValidationException('Validation failed', $errorMessages);
-        }
-    }
-
-    /**
      * Validate post data
      *
      * @param array|null $data
@@ -80,6 +59,27 @@ readonly class PostValidator implements PostValidatorInterface
             if (!isset($data[$field]) || empty(trim($data[$field]))) {
                 throw new InvalidInputException("Field {$field} is required");
             }
+        }
+    }
+
+    /**
+     * Validate post entity
+     *
+     * @param Post $post
+     * @return void
+     * @throws ValidationException
+     */
+    public function validatePost(Post $post): void
+    {
+        $errors = $this->validator->validate($post);
+
+        if (count($errors) > 0) {
+            $errorMessages = [];
+            foreach ($errors as $error) {
+                $errorMessages[$error->getPropertyPath()] = $error->getMessage();
+            }
+
+            throw new ValidationException('Validation failed', $errorMessages);
         }
     }
 }

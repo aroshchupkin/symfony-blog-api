@@ -233,20 +233,28 @@ class Post
     }
 
     /**
-     * Get post author
-     */
-    public function getAuthor(): ?User
-    {
-        return $this->author;
-    }
-
-    /**
      * Get author username
      */
     #[Groups(['post:detail', 'post:list'])]
     public function getAuthorUsername(): ?string
     {
         return $this->author?->getUsername();
+    }
+
+    /**
+     * Get author email
+     */
+    public function getAuthorEmail(): ?string
+    {
+        return $this->author?->getEmail();
+    }
+
+    /**
+     * Get post author
+     */
+    public function getAuthor(): ?User
+    {
+        return $this->author;
     }
 
     /**
@@ -257,14 +265,6 @@ class Post
         $this->author = $author;
 
         return $this;
-    }
-
-    /**
-     * Get author email
-     */
-    public function getAuthorEmail(): ?string
-    {
-        return $this->author?->getEmail();
     }
 
     /**
