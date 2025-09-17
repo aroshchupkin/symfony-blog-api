@@ -348,7 +348,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     }
 
     /**
-     * String representation of user (for debugging)
+     * String representation of user
      */
     public function __toString(): string
     {

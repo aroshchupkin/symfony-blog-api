@@ -96,7 +96,7 @@ final class CommentController extends AbstractController
                 ], Response::HTTP_NOT_FOUND);
             }
 
-            $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:list']]);
+            $data = $this->serializer->serialize($comment, 'json', ['groups' => ['comment:detail']]);
 
             return new JsonResponse($data, Response::HTTP_OK, [], true);
 
