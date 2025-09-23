@@ -27,6 +27,8 @@
 
 Проект дожен запускаться 1 командой (docker compose up -d)
 
+---
+
 **SwaggerUI**:
 - `http://localhost:8000/api/doc`
 
